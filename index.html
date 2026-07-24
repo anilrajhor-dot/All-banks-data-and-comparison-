@@ -71,21 +71,47 @@
   .section-head .t{font-family:'Space Grotesk',sans-serif; font-size:13px; color:var(--accent); text-transform:uppercase; letter-spacing:0.08em;}
   .section-head .line{flex:1; height:1px; background:var(--border);}
 
+  @keyframes fadeSlideUp{ from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes popIn{ from{opacity:0; transform:scale(0.96);} to{opacity:1; transform:scale(1);} }
+
   .chart-card{background:linear-gradient(180deg, var(--panel), var(--panel2)); border:1px solid var(--border);
-    border-radius:14px; padding:20px 20px 10px;}
+    border-radius:14px; padding:20px 20px 10px; animation:fadeSlideUp .5s cubic-bezier(.2,.7,.3,1) both;
+    transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease; will-change:transform;}
+  .chart-card:hover{transform:translateY(-4px); box-shadow:0 16px 36px -14px rgba(0,0,0,0.55); border-color:var(--accent-dim);}
   .chart-card h3{font-family:'Space Grotesk',sans-serif; font-size:14px; margin:0 0 2px; font-weight:600;}
   .chart-card .cap{color:var(--muted); font-size:11px; margin-bottom:12px;}
-  .chart-wrap{position:relative; height:250px;}
+  .chart-wrap{position:relative; height:250px; cursor:crosshair;}
+  .chart-wrap canvas{border-radius:8px;}
   .insight-line{margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); font-size:11.5px;
-    color:var(--accent); min-height:16px; font-family:'IBM Plex Mono',monospace; line-height:1.5;}
+    color:var(--accent); min-height:16px; font-family:'IBM Plex Mono',monospace; line-height:1.5; transition:opacity .15s ease;}
 
-  .lb-table{width:100%; border-collapse:collapse; font-size:13px;}
+  .chart-tooltip{position:fixed; pointer-events:none; z-index:9999; background:#171C33cc; backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:10px 13px; font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px; color:var(--text); box-shadow:0 16px 40px -10px rgba(0,0,0,0.65); max-width:230px;
+    opacity:0; transform:translateY(4px); transition:opacity .1s ease, transform .1s ease;}
+  .chart-tooltip.show{opacity:1; transform:translateY(0);}
+  .chart-tooltip .tt-title{color:var(--accent); font-weight:600; margin-bottom:6px; font-family:'Space Grotesk',sans-serif; font-size:12px;}
+  .chart-tooltip .tt-row{display:flex; align-items:center; gap:7px; padding:2.5px 0; white-space:nowrap;}
+  .chart-tooltip .tt-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+  .chart-tooltip .tt-val{color:var(--muted); margin-left:auto; padding-left:10px;}
+
+  .lb-table{width:100%; border-collapse:collapse; font-size:13px; animation:popIn .4s ease both;}
+  .lb-table tbody tr{transition:background .15s ease;}
+  .lb-table tbody tr:hover{background:rgba(255,255,255,0.03);}
   .lb-table th, .lb-table td{padding:10px 12px; text-align:right; border-bottom:1px solid var(--border);}
   .lb-table th:first-child, .lb-table td:first-child{text-align:left; color:var(--muted); font-size:11.5px;}
   .lb-table th{color:var(--muted); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:0.04em;}
   .lb-table td{font-family:'IBM Plex Mono',monospace;}
   .cell-best{background:rgba(63,191,127,0.14); color:var(--pos); border-radius:6px; font-weight:600;}
   .cell-worst{background:rgba(229,85,90,0.12); color:var(--neg); border-radius:6px;}
+  .lb-bar-wrap{position:relative; display:inline-block; min-width:70px;}
+  .lb-bar{position:absolute; right:2px; top:50%; transform:translateY(-50%) scaleX(0); transform-origin:right;
+    height:62%; border-radius:4px; background:rgba(201,162,75,0.16); z-index:0;
+    animation:lbGrow .6s cubic-bezier(.2,.8,.3,1) forwards;}
+  @keyframes lbGrow{ to{ transform:translateY(-50%) scaleX(1); } }
+  .cell-best .lb-bar{background:rgba(63,191,127,0.22);}
+  .cell-worst .lb-bar{background:rgba(229,85,90,0.20);}
+  .lb-val{position:relative; z-index:1; padding-right:2px;}
 
   .summary-list{list-style:none; padding:0; margin:0;}
   .summary-list li{padding:9px 0 9px 22px; position:relative; font-size:13px; color:var(--text); border-bottom:1px solid var(--border); line-height:1.5;}
@@ -283,7 +309,25 @@ const AI_METRICS = ['pat','nim','cir','gnpa','casa','roa','advgrowth','depgrowth
 const LB_METRICS = ['pat','nim','cir','gnpa','casa','roa']; // leaderboard columns
 const PALETTE = ['#C9A24B','#5B8DEF','#3FBF7F','#E5555A','#7B5BEF','#4FC3D9','#F2A65A','#9AA5C9'];
 
-let STATE = { banks: [], mode:'quarterly', aiInsights:null, aiSummary:null, charts:{} };
+let STATE = { banks: [], mode:'quarterly', aiInsights:null, aiSummary:null, bakedInsights:null, bakedSummary:null, charts:{} };
+
+// Live-fetched insights take priority per bank/metric, but baked-in (pre-written) insights
+// persist underneath so a failed live call — or rebuilding the dashboard — never erases them.
+function effectiveInsights(){
+  if(!STATE.bakedInsights && !STATE.aiInsights) return null;
+  const merged = {};
+  const baked = STATE.bakedInsights || {};
+  const live = STATE.aiInsights || {};
+  new Set([...Object.keys(baked), ...Object.keys(live)]).forEach(metricKey=>{
+    merged[metricKey] = { ...(baked[metricKey]||{}), ...(live[metricKey]||{}) };
+  });
+  return merged;
+}
+function effectiveSummary(){
+  if(STATE.aiSummary && STATE.aiSummary.length) return STATE.aiSummary;
+  if(STATE.bakedSummary && STATE.bakedSummary.length) return STATE.bakedSummary;
+  return null;
+}
 
 // ---------- Parsing ----------
 function splitLine(l){ return l.includes('\t') ? l.split('\t') : l.split(/\s{2,}/); }
@@ -638,6 +682,7 @@ function renderLeaderboard(){
   const table = document.getElementById('lbTable');
   if(!latest || STATE.banks.length===0){ table.innerHTML=''; return; }
   let html = '<tr><th>Metric</th>' + STATE.banks.map(b=>`<th>${b.name}</th>`).join('') + '</tr>';
+  let rowIdx = 0;
   LB_METRICS.forEach(mk=>{
     const def = METRIC_DEFS.find(d=>d.key===mk);
     const vals = STATE.banks.map(b=>{
@@ -649,12 +694,17 @@ function renderLeaderboard(){
     const lowerBetter = LOWER_IS_BETTER.has(mk);
     const best = lowerBetter ? Math.min(...valid) : Math.max(...valid);
     const worst = lowerBetter ? Math.max(...valid) : Math.min(...valid);
-    html += `<tr><td>${def.label}</td>` + vals.map(v=>{
+    const rangeMin = Math.min(...valid), rangeMax = Math.max(...valid);
+    const range = (rangeMax-rangeMin) || 1;
+    html += `<tr>` + `<td>${def.label}</td>` + vals.map((v,ci)=>{
       if(v===null||v===undefined) return '<td>—</td>';
       let cls = '';
       if(valid.length>1){ if(v===best) cls='cell-best'; else if(v===worst) cls='cell-worst'; }
-      return `<td class="${cls}">${fmt(v, def.type)}</td>`;
+      const pct = valid.length>1 ? Math.max(8, Math.round(((v-rangeMin)/range)*100)) : 100;
+      const delay = (rowIdx*90 + ci*40);
+      return `<td class="${cls}"><div class="lb-bar-wrap"><div class="lb-bar" style="width:${pct}%; animation-delay:${delay}ms;"></div><span class="lb-val">${fmt(v, def.type)}</span></div></td>`;
     }).join('') + '</tr>';
+    rowIdx++;
   });
   table.innerHTML = html;
 }
@@ -662,7 +712,8 @@ function renderLeaderboard(){
 // ---------- Charts (self-contained canvas engine — no external chart library needed) ----------
 function destroyCharts(){ STATE.charts={}; }
 
-function drawLiteChart(canvas, labels, datasets, hoverIndex, valueFmt){
+function drawLiteChart(canvas, labels, datasets, hoverIndex, valueFmt, progress){
+  progress = progress===undefined ? 1 : progress;
   const dpr = window.devicePixelRatio || 1;
   const cssW = canvas.parentElement.clientWidth || 300;
   const cssH = 230;
@@ -686,6 +737,7 @@ function drawLiteChart(canvas, labels, datasets, hoverIndex, valueFmt){
   const n = labels.length;
   const xFor = (i)=> n<=1 ? pad.left+plotW/2 : pad.left + (plotW*i/(n-1));
   const yFor = (v)=> pad.top + plotH - ((v-minV)/(maxV-minV))*plotH;
+  const baseY = pad.top + plotH;
 
   ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.fillStyle='#8A93AC';
   ctx.font='10px IBM Plex Mono, monospace'; ctx.textAlign='right'; ctx.textBaseline='middle';
@@ -702,42 +754,91 @@ function drawLiteChart(canvas, labels, datasets, hoverIndex, valueFmt){
   const step = Math.max(1, Math.ceil(n/maxLabels));
   for(let i=0;i<n;i+=step){ ctx.fillText(labels[i], xFor(i), cssH-pad.bottom+6); }
 
-  if(hoverIndex!==null && hoverIndex>=0 && hoverIndex<n){
+  // Reveal cutoff for the draw-in animation: a fractional x position, plus interpolated partial segment.
+  const revealX = pad.left + plotW*progress;
+
+  if(hoverIndex!==null && hoverIndex>=0 && hoverIndex<n && progress>=0.999){
     const gx = xFor(hoverIndex);
     ctx.strokeStyle='rgba(201,162,75,0.35)'; ctx.beginPath(); ctx.moveTo(gx,pad.top); ctx.lineTo(gx,cssH-pad.bottom); ctx.stroke();
   }
 
   datasets.forEach(ds=>{
+    // Build the point list, clipped to the reveal boundary (with one interpolated point at the edge for a smooth sweep).
+    const rawPts = ds.data.map((v,i)=> (v===null||v===undefined||isNaN(v)) ? null : {x:xFor(i), y:yFor(v), i});
     const pts = [];
-    ctx.strokeStyle = ds.color; ctx.lineWidth = 2.3; ctx.lineJoin='round'; ctx.beginPath();
+    for(let k=0;k<rawPts.length;k++){
+      const p = rawPts[k];
+      if(!p){ pts.push(null); continue; }
+      if(p.x<=revealX){ pts.push(p); continue; }
+      const prev = pts.length ? pts[pts.length-1] : null;
+      if(prev && progress<1){
+        const t = (revealX-prev.x)/(p.x-prev.x);
+        if(t>0 && t<1) pts.push({x:revealX, y: prev.y+(p.y-prev.y)*t, i:null, edge:true});
+      }
+      break;
+    }
+
+    // Area fill
+    const solidPts = pts.filter(Boolean);
+    if(solidPts.length>1){
+      const grad = ctx.createLinearGradient(0, pad.top, 0, baseY);
+      grad.addColorStop(0, ds.color+'33');
+      grad.addColorStop(1, ds.color+'00');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(solidPts[0].x, baseY);
+      solidPts.forEach(p=> ctx.lineTo(p.x,p.y));
+      ctx.lineTo(solidPts[solidPts.length-1].x, baseY);
+      ctx.closePath(); ctx.fill();
+    }
+
+    // Line
+    ctx.strokeStyle = ds.color; ctx.lineWidth = 2.3; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.beginPath();
     let started=false;
-    ds.data.forEach((v,i)=>{
-      if(v===null||v===undefined||isNaN(v)){ pts.push(null); return; }
-      const x=xFor(i), y=yFor(v); pts.push({x,y});
-      if(!started){ ctx.moveTo(x,y); started=true; } else { ctx.lineTo(x,y); }
+    pts.forEach(p=>{
+      if(!p) return;
+      if(!started){ ctx.moveTo(p.x,p.y); started=true; } else { ctx.lineTo(p.x,p.y); }
     });
     ctx.stroke();
-    pts.forEach((p,i)=>{
-      if(!p) return;
-      const isHover = i===hoverIndex;
-      ctx.beginPath(); ctx.arc(p.x,p.y, isHover?5:2.8, 0, Math.PI*2);
+
+    // Points (skip the synthetic edge point used only for the reveal sweep)
+    pts.forEach(p=>{
+      if(!p || p.edge) return;
+      const isHover = p.i===hoverIndex;
+      ctx.beginPath(); ctx.arc(p.x,p.y, isHover?5.5:2.8, 0, Math.PI*2);
       ctx.fillStyle = ds.color; ctx.fill();
-      if(isHover){ ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke(); }
+      if(isHover){
+        ctx.save(); ctx.shadowColor=ds.color; ctx.shadowBlur=10;
+        ctx.beginPath(); ctx.arc(p.x,p.y,5.5,0,Math.PI*2); ctx.fillStyle=ds.color; ctx.fill(); ctx.restore();
+        ctx.strokeStyle='#fff'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(p.x,p.y,5.5,0,Math.PI*2); ctx.stroke();
+      }
     });
   });
 
   return {pad, plotW, plotH, xFor};
 }
 
+function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+
 function createLiteChart(canvas, labels, datasets, valueFmt){
   let hoverIndex = null;
   let geom = null;
-  function redraw(){ geom = drawLiteChart(canvas, labels, datasets, hoverIndex, valueFmt); }
-  redraw();
-  window.addEventListener('resize', redraw);
-  return {
+  let progress = 0;
+  let lastWidth = null;
+  function redraw(){ geom = drawLiteChart(canvas, labels, datasets, hoverIndex, valueFmt, progress); }
+  // Draw-in animation on first render
+  const start = performance.now();
+  const DURATION = 650;
+  function tick(now){
+    const t = Math.min(1, (now-start)/DURATION);
+    progress = easeOutCubic(t);
+    redraw();
+    if(t<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  const api = {
     labels, datasets,
-    setHover(idx){ hoverIndex = idx; redraw(); },
+    setHover(idx){ hoverIndex = idx; progress = 1; redraw(); },
     nearestIndex(clientX){
       const rect = canvas.getBoundingClientRect();
       const localX = clientX - rect.left;
@@ -747,16 +848,54 @@ function createLiteChart(canvas, labels, datasets, valueFmt){
       return best;
     },
     toBase64Image(){ try{ return canvas.toDataURL('image/png'); }catch(e){ return null; } },
+    // Only redraws if the canvas's actual on-screen width changed — skips resize events caused
+    // by the on-screen keyboard opening/closing (which change viewport height, not width), so
+    // typing/pasting into a text field elsewhere on the page doesn't trigger 14 heavy canvas redraws.
+    resizeIfNeeded(){
+      const w = canvas.parentElement ? canvas.parentElement.clientWidth : null;
+      if(w !== null && w !== lastWidth){ lastWidth = w; redraw(); }
+    },
   };
+  return api;
 }
+
+// Single, debounced, width-aware resize handler shared by all charts — avoids each of the ~14
+// chart instances registering its own listener (which previously caused a burst of heavy
+// synchronous redraws whenever the mobile keyboard opened/closed near any text field).
+let RESIZE_TIMER = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(RESIZE_TIMER);
+  RESIZE_TIMER = setTimeout(()=>{
+    Object.values(STATE.charts).forEach(c=> c.resizeIfNeeded && c.resizeIfNeeded());
+  }, 180);
+});
+
+// ---------- Floating tooltip (shared across all charts) ----------
+let TOOLTIP_EL = null;
+function getTooltipEl(){
+  if(!TOOLTIP_EL){ TOOLTIP_EL = document.createElement('div'); TOOLTIP_EL.className='chart-tooltip'; document.body.appendChild(TOOLTIP_EL); }
+  return TOOLTIP_EL;
+}
+function showTooltip(clientX, clientY, titleHtml, rowsHtml){
+  const el = getTooltipEl();
+  el.innerHTML = `<div class="tt-title">${titleHtml}</div>${rowsHtml}`;
+  el.classList.add('show');
+  const vw = window.innerWidth || 400;
+  let left = clientX + 16;
+  if(left + 240 > vw) left = clientX - 246;
+  el.style.left = Math.max(8,left)+'px';
+  el.style.top = (clientY - 10)+'px';
+}
+function hideTooltip(){ if(TOOLTIP_EL) TOOLTIP_EL.classList.remove('show'); }
 
 function renderCharts(){
   const grid = document.getElementById('chartGrid');
-  grid.innerHTML=''; destroyCharts();
+  grid.innerHTML=''; destroyCharts(); hideTooltip();
   const labels = unionPeriods(STATE.mode);
   if(labels.length===0){ grid.innerHTML = '<div style="color:var(--muted); grid-column:1/-1;">No overlapping periods found across the banks added.</div>'; return; }
 
   let lastSection = null;
+  let cardIndex = 0;
   METRIC_DEFS.forEach(def=>{
     const datasets = [];
     STATE.banks.forEach((bank, bi)=>{
@@ -777,15 +916,18 @@ function renderCharts(){
     }
 
     const latestIdx = labels.length-1;
+    const insightsNow = effectiveInsights();
     const defaultBits = insightBitsFor(def, latestIdx, datasets, labels);
     const defaultHtml = defaultBits.length
       ? defaultBits.join(' &nbsp;·&nbsp; ')
-      : (STATE.aiInsights ? `No notable AI commentary for ${labels[latestIdx]}. Hover other points for computed deltas.` : `Hover a point for computed change. Click "Generate AI peer insights" for reasoning.`);
+      : (insightsNow ? `No notable AI commentary for ${labels[latestIdx]}. Hover other points for computed deltas.` : `Hover a point for computed change. Click "Generate AI peer insights" for reasoning.`);
 
     const legendHtml = datasets.map(ds=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;"><span style="width:8px;height:8px;border-radius:50%;background:${ds.color};display:inline-block;"></span>${ds.label}</span>`).join('');
 
     const card = document.createElement('div'); card.className='chart-card';
-    card.innerHTML = `<h3>${def.label}</h3><div class="cap">${def.type==='percent'?'% ':'₹ Cr — '}by bank, ${STATE.mode}</div>
+    card.style.animationDelay = Math.min(cardIndex*45, 400)+'ms';
+    cardIndex++;
+    card.innerHTML = `<h3>${def.label}</h3><div class="cap">${def.type==='percent'?'% ':'₹ Cr — '}by bank, ${STATE.mode} · tap/hover to explore</div>
       <div class="chart-wrap"><canvas id="cv_${def.key}"></canvas></div>
       <div style="font-size:10.5px; color:var(--muted); margin-top:8px;">${legendHtml}</div>
       <div class="insight-line" id="il_${def.key}">${defaultHtml}</div>`;
@@ -796,8 +938,8 @@ function renderCharts(){
     const chart = createLiteChart(canvas, labels, datasets, valueFmt);
     STATE.charts[def.key] = chart;
 
-    canvas.addEventListener('mousemove', (evt)=>{
-      const idx = chart.nearestIndex(evt.clientX);
+    function handleHover(clientX, clientY){
+      const idx = chart.nearestIndex(clientX);
       if(idx===null) return;
       chart.setHover(idx);
       const ilEl = document.getElementById('il_'+def.key);
@@ -815,16 +957,28 @@ function renderCharts(){
       } else {
         ilEl.innerHTML = `${label} — no data for this period.`;
       }
-    });
+      // Floating tooltip
+      const rows = datasets.map(ds=>{
+        const v = ds.data[idx];
+        return `<div class="tt-row"><span class="tt-dot" style="background:${ds.color}"></span>${ds.label}<span class="tt-val">${fmt(v, ds._type)}</span></div>`;
+      }).join('');
+      showTooltip(clientX, clientY, label, rows);
+    }
+
+    canvas.addEventListener('mousemove', (evt)=> handleHover(evt.clientX, evt.clientY));
     canvas.addEventListener('mouseleave', ()=>{
       chart.setHover(null);
       document.getElementById('il_'+def.key).innerHTML = defaultHtml;
+      hideTooltip();
     });
+    canvas.addEventListener('touchstart', (evt)=>{
+      if(evt.touches && evt.touches[0]) handleHover(evt.touches[0].clientX, evt.touches[0].clientY);
+    }, {passive:true});
     canvas.addEventListener('touchmove', (evt)=>{
-      if(evt.touches && evt.touches[0]){
-        const idx = chart.nearestIndex(evt.touches[0].clientX);
-        if(idx!==null){ chart.setHover(idx); canvas.dispatchEvent(new MouseEvent('mousemove', {clientX:evt.touches[0].clientX})); }
-      }
+      if(evt.touches && evt.touches[0]) handleHover(evt.touches[0].clientX, evt.touches[0].clientY);
+    }, {passive:true});
+    canvas.addEventListener('touchend', ()=>{
+      setTimeout(()=>{ chart.setHover(null); document.getElementById('il_'+def.key).innerHTML = defaultHtml; hideTooltip(); }, 1200);
     }, {passive:true});
   });
 }
@@ -835,7 +989,8 @@ function insightBitsFor(def, idx, datasets, labels){
   const isLatest = idx === (labels.length-1);
   if(!isLatest) return bits;
   datasets.forEach(ds=>{
-    const ai = STATE.aiInsights && STATE.aiInsights[def.key] && STATE.aiInsights[def.key][ds._bankName];
+    const insightsNow2 = effectiveInsights();
+    const ai = insightsNow2 && insightsNow2[def.key] && insightsNow2[def.key][ds._bankName];
     if(ai) bits.push(`<b>${ds.label}:</b> ${ai}`);
   });
   return bits;
@@ -912,19 +1067,21 @@ function renderSummary(){
   const list = document.getElementById('summaryList');
   const labels = unionPeriods(STATE.mode);
   document.getElementById('dashSub').textContent = `${STATE.banks.map(b=>b.name).join(' · ')} — as of ${labels[labels.length-1]||''}`;
-  if(!STATE.aiSummary || STATE.aiSummary.length===0){ panel.style.display='none'; return; }
+  const summaryNow = effectiveSummary();
+  if(!summaryNow || summaryNow.length===0){ panel.style.display='none'; return; }
   panel.style.display='block';
-  list.innerHTML = STATE.aiSummary.map(b=>`<li>${b}</li>`).join('');
+  list.innerHTML = summaryNow.map(b=>`<li>${b}</li>`).join('');
 }
 
 function renderAiLog(){
   const panel = document.getElementById('aiLogPanel');
   const list = document.getElementById('aiLogList');
-  if(!STATE.aiInsights || Object.keys(STATE.aiInsights).length===0){ panel.style.display='none'; return; }
+  const insightsForLog = effectiveInsights();
+  if(!insightsForLog || Object.keys(insightsForLog).length===0){ panel.style.display='none'; return; }
   panel.style.display='block';
   let html = '';
   METRIC_DEFS.forEach(def=>{
-    const entries = STATE.aiInsights[def.key];
+    const entries = insightsForLog[def.key];
     if(!entries || Object.keys(entries).length===0) return;
     html += `<div class="ai-log-group"><div class="mtitle">${def.label}</div>`;
     STATE.banks.forEach(b=>{
@@ -956,11 +1113,12 @@ async function exportDeck(){
   s.addText(`Latest period: ${latest||''}`, {x:0.7,y:4.0,w:11.9,h:0.5,fontSize:13,color:MUTED});
   s.addShape('line',{x:0.7,y:4.7,w:5,h:0,line:{color:GOLD,width:1.5}});
 
-  if(STATE.aiSummary && STATE.aiSummary.length){
+  const deckSummary = effectiveSummary();
+  if(deckSummary && deckSummary.length){
     let sx = pptx.addSlide(); sx.background={color:DARK};
     sx.addText('Peer Takeaways', {x:0.6,y:0.4,w:12,h:0.6,fontSize:24,bold:true,color:TEXT});
     sx.addShape('line',{x:0.6,y:1.0,w:2,h:0,line:{color:GOLD,width:2}});
-    sx.addText(STATE.aiSummary.map(b=>({text:b, options:{bullet:{code:'25AA'}, color:TEXT, fontSize:16, breakLine:true, paraSpaceAfter:14}})), {x:0.7,y:1.4,w:11.9,h:5.5,valign:'top'});
+    sx.addText(deckSummary.map(b=>({text:b, options:{bullet:{code:'25AA'}, color:TEXT, fontSize:16, breakLine:true, paraSpaceAfter:14}})), {x:0.7,y:1.4,w:11.9,h:5.5,valign:'top'});
   }
 
   // Leaderboard slide
@@ -988,7 +1146,8 @@ async function exportDeck(){
     try{ cs.addImage({data:chart.toBase64Image(), x:0.6,y:1.3,w:8.2,h:4.6}); }catch(e){}
     let notes = [];
     STATE.banks.forEach(b=>{
-      const ai = STATE.aiInsights && STATE.aiInsights[def.key] && STATE.aiInsights[def.key][b.name];
+      const deckInsights = effectiveInsights();
+      const ai = deckInsights && deckInsights[def.key] && deckInsights[def.key][b.name];
       if(ai) notes.push(`${b.name}: ${ai}`);
       else { const s=seriesForBank(b, def.key, labels); if(s){ const dt=deltaText(s, s.length-1); if(dt) notes.push(`${b.name}: ${dt}`); } }
     });
@@ -1000,10 +1159,11 @@ async function exportDeck(){
   }
 
   // AI Insight Log appendix — full text record, chunked into slides of ~14 rows each
-  if(STATE.aiInsights && Object.keys(STATE.aiInsights).length){
+  const appendixInsights = effectiveInsights();
+  if(appendixInsights && Object.keys(appendixInsights).length){
     let logRows = [];
     METRIC_DEFS.forEach(def=>{
-      const entries = STATE.aiInsights[def.key];
+      const entries = appendixInsights[def.key];
       if(!entries) return;
       STATE.banks.forEach(b=>{
         const text = entries[b.name];
@@ -1032,11 +1192,9 @@ document.getElementById('buildBtn').addEventListener('click', ()=>{
   const status = document.getElementById('statusLine');
   document.getElementById('dashboard').classList.remove('hidden');
   document.getElementById('aiBtn').disabled = false;
-  document.getElementById('exportBtn').classList.add('hidden');
-  STATE.aiInsights=null; STATE.aiSummary=null;
-  document.getElementById('aiLogPanel').style.display='none';
-  document.getElementById('summaryPanel').style.display='none';
-  renderLeaderboard(); renderCharts(); renderSummary();
+  STATE.aiInsights=null; STATE.aiSummary=null; // clears only the live layer — baked insights are untouched
+  renderLeaderboard(); renderCharts(); renderSummary(); renderAiLog();
+  document.getElementById('exportBtn').classList.toggle('hidden', !effectiveInsights() && !effectiveSummary());
   status.className='status ok';
   status.textContent = `✓ Dashboard built for ${STATE.banks.length} bank(s).`;
 });
@@ -1051,8 +1209,8 @@ document.getElementById('periodToggle').addEventListener('click', (e)=>{
 
 // ---------- Preload: Suryoday Small Finance Bank Q1FY27 ----------
 // Baked in directly so the dashboard is ready on open — no import/paste needed.
-(function preloadSuryoday(){
-  const raw =
+(function preloadBanks(){
+  const suryodayRaw =
 "Metric\tQ1FY27\tFY26\tQ4FY26\tQ3FY26\tQ2FY26\tQ1FY26\tFY25\tQ4FY25\tQ3FY25\tQ2FY25\tQ1FY25\tFY24\tQ4FY24\tQ3FY24\tFY23\tFY22\n"+
 "Total Income\t770.2\t2520.0\t691.9\t624.8\t599.5\t603.8\t2171.0\t530.7\t527.4\t554.7\t558.3\t1808.1\t509.4\t462.6\t1281.1\t1036.2\n"+
 "Net Interest Income\t315.7\t1098.7\t316.6\t276.8\t258.2\t247.1\t1106.1\t244.7\t268.3\t300.0\t293.2\t962.2\t270.8\t245.7\t746.6\t584.5\n"+
@@ -1070,43 +1228,115 @@ document.getElementById('periodToggle').addEventListener('click', (e)=>{
 "Return on Assets\t1.52\t0.89\t1.08\t0.88\t0.76\t0.88\t0.84\t-0.92\t0.96\t1.40\t1.88\t1.94\t2.08\t2.04\t0.87\t-1.29\n"+
 "Return on Equity\t15.5\t7.6\t7.3\t6.0\t12.9\t5.1";
 
-  try{
-    const parsed = parseData(raw);
-    if(parsed){
-      const resolved = resolveMetrics(parsed.metrics);
-      STATE.banks.push({ name:'Suryoday Small Finance Bank', periods:parsed.periods, metrics:parsed.metrics, resolved });
-      renderChips();
-      updateBuildPanel();
-      const status = document.getElementById('statusLine');
-      status.className='status ok';
-      status.textContent = '✓ Suryoday Small Finance Bank (Q1FY27 results) preloaded. Add more banks to compare, or build the dashboard now.';
-      document.getElementById('buildBtn').click();
+  const cbiRaw =
+"Metric\tQ1FY27\tFY26\tQ4FY26\tQ3FY26\tQ2FY26\tQ1FY26\tFY25\tQ4FY25\tQ3FY25\tQ2FY25\tQ1FY25\tFY24\tQ4FY24\tQ3FY24\tFY23\tFY22\n"+
+"Total Income\t10678\t42403\t10810\t10969\t10250\t10374\t39520\t10433\t9739\t9849\t9500\t35434\t9699\t8184\t29626\t25770\n"+
+"Net Interest Income\t3914\t14170\t4002\t3502\t3283\t3383\t13897\t3399\t3540\t3410\t3548\t12896\t3541\t3176\t11687\t9487\n"+
+"Net Profit\t1324\t4369\t724\t1263\t1213\t1169\t3785\t1034\t959\t913\t880\t2549\t807\t418\t1582\t1045\n"+
+"Net Interest Margin (%)\t3.06\t3.07\t3.25\t2.96\t2.89\t3.16\t3.40\t3.22\t3.45\t3.44\t3.57\t3.40\t3.58\t3.43\t3.47\t3.21\n"+
+"Cost to Income Ratio\t55.40\t58.74\t59.31\t57.84\t62.72\t55.43\t58.87\t61.57\t58.83\t57.19\t57.71\t58.18\t57.91\t55.55\t56.35\t53.90\n"+
+"% of Gross NPAs\t2.60\t2.67\t2.67\t2.70\t3.01\t3.13\t3.18\t3.18\t3.86\t4.59\t4.54\t4.50\t4.50\t4.95\t8.44\t14.84\n"+
+"% of Net NPAs\t0.49\t0.49\t0.49\t0.45\t0.48\t0.49\t0.55\t0.55\t0.59\t0.69\t0.73\t1.23\t1.23\t1.75\t1.77\t3.97\n"+
+"PCR without Tech W/off (%)\t81.41\t81.86\t81.86\t83.80\t84.55\t84.86\t83.27\t83.27\t85.13\t85.57\t84.45\t73.53\t73.53\t65.86\t80.47\t76.29\n"+
+"Net Advances\t346837\t336997\t336997\t316219\t286024\t268266\t282420\t282420\t261874\t243013\t240999\t243406\t243406\t212690\t202984\t168174\n"+
+"Deposits\t478972\t467922\t467922\t450575\t444450\t428890\t412697\t412697\t397907\t391914\t384950\t385011\t385011\t363398\t359296\t342692\n"+
+"Net Advances Growth YoY\t29.3\t19.3\t19.3\t20.8\t17.7\t11.3\t16.0\t16.0\t13.0\t8.5\t13.3\t19.9\t19.9\t23.3\t20.7\t7.4\n"+
+"Deposit Growth YoY\t11.7\t13.4\t13.4\t13.2\t13.4\t11.4\t7.2\t7.2\t5.3\t5.6\t5.9\t7.2\t7.2\t6.0\t4.8\t3.9\n"+
+"CASA Ratio\t46.5\t47.2\t47.2\t47.0\t46.7\t46.8\t48.7\t48.7\t49.0\t48.8\t49.1\t49.9\t49.9\t49.6\t50.2\t50.3\n"+
+"Return on Assets\t1.00\t0.89\t0.56\t1.01\t1.01\t1.02\t0.86\t0.90\t0.86\t0.85\t0.82\t0.63\t0.76\t0.43\t0.44\t0.30\n"+
+"Return on Equity\t14.92\t13.00\t8.43\t14.47\t14.22\t14.17\t12.48\t13.21\t12.85\t12.76\t12.56\t9.53\t11.68\t6.52\t6.42\t4.49";
 
-      // Pre-computed AI-style insights for the preloaded bank, baked in directly.
-      // (Generated the same way the live "Generate AI insights" button would — this just
-      // doesn't depend on that in-browser API call succeeding, which some mobile browsers block.)
-      STATE.aiInsights = {
-        pat: { 'Suryoday Small Finance Bank': 'PAT surged 113% YoY as provisions eased sharply and asset quality improved.' },
-        nim: { 'Suryoday Small Finance Bank': 'NIM flat YoY at 7.2% but slipped 70bps QoQ on funding-cost pressure.' },
-        cir: { 'Suryoday Small Finance Bank': 'Cost-to-income improved to 70.1% sequentially, still above FY25 levels though.' },
-        gnpa: { 'Suryoday Small Finance Bank': 'Gross NPA down 186bps YoY to 6.6% as legacy microfinance stress eases.' },
-        casa: { 'Suryoday Small Finance Bank': 'CASA ratio dipped to 21% QoQ, still well up from 17.7% a year ago.' },
-        roa: { 'Suryoday Small Finance Bank': 'RoA jumped to 1.52%, up 64bps YoY, on lower credit costs and better margins.' },
-        advgrowth: { 'Suryoday Small Finance Bank': 'Advances grew 26.9% YoY, a steady pace roughly matching last year\u2019s.' },
-        depgrowth: { 'Suryoday Small Finance Bank': 'Deposit growth decelerated to 29.4% YoY from 39% a year ago.' },
-      };
-      STATE.aiSummary = [
-        'PAT more than doubled YoY (+113%) on sharply lower provisions and improving asset quality.',
-        'Asset quality strengthened: Gross NPA down to 6.6% and PCR up to 81.8%, a period high.',
-        'Returns improved meaningfully \u2014 RoA at 1.52% and RoE at 15.5%, both multi-quarter highs.',
-        'NIM held roughly flat YoY at 7.2% but compressed sequentially on funding-cost pressure.',
-        'Cost-to-income improved QoQ to 70.1% but remains structurally elevated versus FY25.',
-        'Deposit growth (29.4% YoY) decelerated from last year\u2019s pace \u2014 worth watching alongside CASA softness.',
-      ];
-      renderCharts(); renderSummary(); renderAiLog();
-      document.getElementById('exportBtn').classList.remove('hidden');
-      status.textContent = '✓ Suryoday Small Finance Bank preloaded with dashboard and AI insights ready. Add more banks to compare live.';
-    }
+  const iobRaw =
+"Metric\tQ1FY27\tFY26\tQ4FY26\tQ3FY26\tQ2FY26\tQ1FY26\tFY25\tQ4FY25\tQ3FY25\tQ2FY25\tQ1FY25\tFY24\tQ4FY24\tQ3FY24\tFY23\tFY22\n"+
+"Total Income\t10938\t37532\t9780\t9672\t9214\t8866\t33676\t9215\t8409\t8484\t7568\t29706\t9106\t6227\t23509\t21633\n"+
+"Net Interest Income\t3688\t12574\t3470\t3299\t3059\t2746\t10890\t3123\t2789\t2537\t2441\t9829\t2763\t2323\t8255\t6311\n"+
+"Net Profit\t1659\t5208\t1505\t1365\t1226\t1111\t3335\t1051\t874\t777\t633\t2656\t808\t500\t2099\t1710\n"+
+"Net Interest Margin (%)\t3.37\t3.21\t3.25\t3.32\t3.21\t3.04\t3.25\t3.58\t3.33\t3.08\t3.06\t3.28\t3.53\t3.21\t2.93\t2.41\n"+
+"Cost to Income Ratio\t53.95\t44.94\t44.02\t45.74\t45.76\t44.22\t47.14\t44.35\t44.55\t48.97\t51.76\t56.32\t62.58\t56.96\t51.94\t48.61\n"+
+"% of Gross NPAs\t1.33\t1.42\t1.42\t1.54\t1.83\t1.97\t2.14\t2.14\t2.55\t2.72\t2.89\t3.10\t3.10\t7.13\t7.44\t9.82\n"+
+"% of Net NPAs\t0.18\t0.21\t0.21\t0.24\t0.28\t0.32\t0.37\t0.37\t0.42\t0.47\t0.51\t0.57\t0.57\t1.44\t1.83\t2.65\n"+
+"PCR without Tech W/off (%)\t86.29\t85.54\t85.54\t84.37\t84.71\t84.24\t82.95\t82.95\t83.92\t83.05\t82.65\t82.09\t82.09\t81.00\t76.79\t75.00\n"+
+"Net Advances\t318401\t306622\t306622\t291123\t273640\t258032\t245555\t245555\t232507\t224915\t224551\t213319\t213319\t180071\t178053\t144244\n"+
+"Deposits\t376193\t368191\t368191\t349302\t339066\t330792\t311939\t311939\t305121\t310652\t298681\t285905\t285905\t264401\t260883\t262159\n"+
+"Net Advances Growth YoY\t23.4\t24.9\t24.9\t25.2\t21.7\t14.9\t15.1\t15.1\t11.3\t12.3\t24.7\t19.8\t19.8\t18.3\t23.4\t12.9\n"+
+"Deposit Growth YoY\t13.7\t18.0\t18.0\t14.5\t9.1\t10.8\t9.1\t9.1\t9.7\t13.8\t13.0\t9.6\t9.6\t1.7\t-0.5\t9.1\n"+
+"CASA Ratio\t41.0\t41.0\t41.0\t40.8\t40.5\t43.8\t43.6\t43.6\t43.4\t42.4\t42.2\t43.9\t43.9\t44.1\t43.7\t43.4\n"+
+"Return on Assets\t1.41\t1.23\t1.32\t1.28\t1.20\t1.14\t0.92\t1.12\t0.93\t0.82\t0.70\t0.81\t0.94\t0.62\t0.68\t0.59\n"+
+"Return on Equity\t22.69\t20.42\t21.94\t20.98\t19.95\t19.00\t16.28\t19.53\t17.86\t16.90\t14.10\t16.24\t18.50\t13.44\t15.55\t17.89";
+
+  const status = document.getElementById('statusLine');
+  try{
+    [
+      {name:'Suryoday Small Finance Bank', raw: suryodayRaw},
+      {name:'Central Bank of India', raw: cbiRaw},
+      {name:'Indian Overseas Bank', raw: iobRaw},
+    ].forEach(b=>{
+      const parsed = parseData(b.raw);
+      if(!parsed) return;
+      const resolved = resolveMetrics(parsed.metrics);
+      STATE.banks.push({ name:b.name, periods:parsed.periods, metrics:parsed.metrics, resolved });
+    });
+    renderChips();
+    updateBuildPanel();
+
+    // Pre-computed AI-style comparative insights for both preloaded banks, baked in as a
+    // permanent layer that survives rebuilding the dashboard and any failed live
+    // "Generate AI insights" calls. (Generated the same way that button would — this just
+    // doesn't depend on the in-browser API call succeeding, which some mobile browsers block.)
+    STATE.bakedInsights = {
+      pat: {
+        'Suryoday Small Finance Bank': 'PAT surged 113% YoY as provisions eased sharply and asset quality improved.',
+        'Central Bank of India': 'PAT grew 13.3% YoY and jumped 82.7% QoQ off a weak, high-provision Q4FY26 base.',
+        'Indian Overseas Bank': 'PAT grew 49.3% YoY to \u20b91,659cr, the strongest sustained profitability trend of the three.',
+      },
+      nim: {
+        'Suryoday Small Finance Bank': 'NIM flat YoY at 7.2% but slipped 70bps QoQ on funding-cost pressure.',
+        'Central Bank of India': 'NIM at 3.06%, near the low end of its range — a large low-yield corporate book caps margin vs SFB peers.',
+        'Indian Overseas Bank': 'NIM expanded to 3.37%, a period high, bucking the margin compression seen at the other two.',
+      },
+      cir: {
+        'Suryoday Small Finance Bank': 'Cost-to-income improved to 70.1% sequentially, still above FY25 levels though.',
+        'Central Bank of India': 'Cost-to-income improved sharply to 55.4%, its best print shown and far below Suryoday\u2019s.',
+        'Indian Overseas Bank': 'Cost-to-income jumped to 53.95% this quarter, reversing FY26\u2019s efficiency gains — worth watching.',
+      },
+      gnpa: {
+        'Suryoday Small Finance Bank': 'Gross NPA down 186bps YoY to 6.6% as legacy microfinance stress eases.',
+        'Central Bank of India': 'Gross NPA fell to 2.60%, extending a multi-year clean-up to among the strongest levels in PSU banking.',
+        'Indian Overseas Bank': 'Gross NPA at just 1.33% is the cleanest book of the three, continuing a multi-year clean-up.',
+      },
+      casa: {
+        'Suryoday Small Finance Bank': 'CASA ratio dipped to 21% QoQ, still well up from 17.7% a year ago.',
+        'Central Bank of India': 'CASA at 46.5% still dwarfs Suryoday\u2019s, though it has drifted down from ~50% two years ago.',
+        'Indian Overseas Bank': 'CASA at 41.0% sits between the other two, though it has drifted down from ~44% in FY24.',
+      },
+      roa: {
+        'Suryoday Small Finance Bank': 'RoA jumped to 1.52%, up 64bps YoY, on lower credit costs and better margins.',
+        'Central Bank of India': 'RoA held near 1.00%, solid for a PSU bank but now below Suryoday\u2019s sharply improved 1.52%.',
+        'Indian Overseas Bank': 'RoA at 1.41% trails only Suryoday, while RoE (22.69%) is the strongest of the peer set.',
+      },
+      advgrowth: {
+        'Suryoday Small Finance Bank': 'Advances grew 26.9% YoY, a steady pace roughly matching last year\u2019s.',
+        'Central Bank of India': 'Advances grew 29.3% YoY, actually outpacing Suryoday despite CBI\u2019s far larger base.',
+        'Indian Overseas Bank': 'Advances grew 23.4% YoY — the slowest of the three, though still strong off a large base.',
+      },
+      depgrowth: {
+        'Suryoday Small Finance Bank': 'Deposit growth decelerated to 29.4% YoY from 39% a year ago.',
+        'Central Bank of India': 'Deposit growth of 11.7% YoY trails Suryoday\u2019s pace, typical of a large bank vs a fast-scaling SFB.',
+        'Indian Overseas Bank': 'Deposit growth of 13.7% YoY leads CBI but trails Suryoday\u2019s much smaller-base growth.',
+      },
+    };
+    STATE.bakedSummary = [
+      'IOB leads the peer set on quality of returns \u2014 RoE of 22.69% and Gross NPA of just 1.33%, the cleanest book of the three.',
+      'Suryoday still posts the highest RoA (1.52%) and by far the fastest PAT growth (+113% YoY), aided by a low base.',
+      'CBI remains the most efficient at scale on cost-to-income (55.4%) and has by far the largest CASA franchise (46.5%).',
+      'NIM diverges sharply by model: Suryoday 7.2% vs IOB 3.37% vs CBI 3.06% \u2014 small-finance vs universal-bank economics.',
+      'IOB\u2019s cost-to-income jumped to 53.95% this quarter after a strong FY26 \u2014 a trend worth watching alongside CBI\u2019s own uptick.',
+      'Advances growth is strong and fairly even across the set (23\u201329% YoY), though funded very differently by deposits.',
+    ];
+
+    document.getElementById('buildBtn').click();
+    status.className='status ok';
+    status.textContent = '✓ Three banks preloaded — Suryoday, Central Bank of India & Indian Overseas Bank — dashboard and AI insights ready.';
   }catch(err){ console.error('Preload failed', err); }
 })();
 </script>
