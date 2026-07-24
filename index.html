@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js" crossorigin="anonymous"></script>
 <style>
   :root{
     --bg:#0A0D16; --panel:#111527; --panel2:#171C33; --raise:#1D2340;
@@ -293,6 +294,7 @@ function checkLibraries(){
   const missing = [];
   if(typeof XLSX === 'undefined') missing.push('SheetJS (.xlsx import)');
   if(typeof pdfjsLib === 'undefined') missing.push('PDF.js (.pdf import)');
+  if(typeof PptxGenJS === 'undefined') missing.push('PptxGenJS (.pptx export will use a basic offline fallback instead)');
   if(missing.length){
     const w = document.getElementById('libWarning');
     document.getElementById('libWarningDetail').textContent = `Missing: ${missing.join(', ')}.`;
@@ -1674,7 +1676,8 @@ ${relEntries.map(r=>`<Relationship Id="${r.id}" Type="http://schemas.openxmlform
 async function exportDeck(){
   const status = document.getElementById('statusLine');
   status.className='status'; status.textContent='Building PowerPoint…';
-  const pptx = new MiniPptx();
+  const usingFallback = typeof PptxGenJS === 'undefined';
+  const pptx = usingFallback ? new MiniPptx() : new PptxGenJS();
   pptx.defineLayout({name:'WIDE', width:13.33, height:7.5}); pptx.layout='WIDE';
   const GOLD='C9A24B', DARK='0A0D16', PANEL='171C33', TEXT='EDEFF5', MUTED='8A93AC';
   const labels = unionPeriods(STATE.mode); const latest = labels[labels.length-1];
@@ -1756,7 +1759,10 @@ async function exportDeck(){
 
   const filename = 'Peer_Benchmark_Board_Deck.pptx';
   await pptx.writeFile({fileName:filename});
-  status.className='status ok'; status.textContent='✓ Downloaded '+filename;
+  status.className='status ok';
+  status.textContent = usingFallback
+    ? `✓ Downloaded ${filename} (built with the offline fallback engine — if PowerPoint has trouble opening it, reload the page for a stronger connection and export again).`
+    : `✓ Downloaded ${filename}`;
 }
 
 // ---------- Wiring ----------
