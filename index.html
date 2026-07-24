@@ -168,6 +168,7 @@
       <div class="toggle-group" id="addModeToggle">
         <button data-add-mode="single" class="active">One by one</button>
         <button data-add-mode="bulk">All at once</button>
+        <button data-add-mode="wide">Peer report (wide)</button>
       </div>
     </div>
 
@@ -218,6 +219,27 @@ Metric&#9;Q1FY27&#9;FY26&#9;Q4FY26...
 Net Interest Margin (%)&#9;5.80&#9;6.10&#9;..."></textarea>
       <div class="btn-row">
         <button class="btn-primary" id="addBulkBtn">+ Add all banks</button>
+      </div>
+    </div>
+
+    <div id="wideAddBlock" class="hidden">
+      <div class="desc">For "many companies compared at one point in time" reports (columns = company names, e.g. PNB, Union, BOI... rather than quarters). Paste or import one or more such reports — Ledger finds every period-labeled table inside (e.g. "Cost Ratios Analysis 9MFY26", "Key Fundamentals FY24") and transposes each company into its own proper multi-period bank entry. If a bank with the same name already exists in your list, its data is merged in rather than duplicated.</div>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn-ghost" id="loadWideSample">Load sample (PSU peer report)</button>
+        <button class="btn-ghost" id="widePasteBtn">📋 Paste from clipboard</button>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <div>
+          <label>Or import file(s) directly (.csv, .tsv, .txt, .xlsx, .xls, .pdf) — one or more editions of the same report</label>
+          <input type="file" id="wideFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf" multiple />
+        </div>
+      </div>
+      <textarea id="wideData" style="min-height:220px;" placeholder="Particulars (INR in Crores)&#9;PNB&#9;Union&#9;BOI&#9;CBI&#9;IOB...
+Cost Ratios Analysis&#9;9MFY26
+Net Interest Margin (%)&#9;2.60&#9;2.72&#9;2.51&#9;3.00&#9;3.19...
+Return on Assets&#9;0.83&#9;1.20&#9;0.90&#9;1.02&#9;1.20..."></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" id="addWideBtn">+ Add peer report banks</button>
       </div>
     </div>
 
@@ -369,7 +391,112 @@ function resolveMetrics(metrics){
   METRIC_DEFS.forEach(def=>{ const row = findMetricRow(metrics, def); if(row) out[def.key]=row; });
   return out;
 }
-function quarterKey(label){ const m=label.match(/^Q([1-4])FY(\d{2,4})/i); if(!m) return null; return parseInt(m[2],10)*10+parseInt(m[1],10); }
+
+// ---------- Wide-format "many companies at one point in time" comparative report parser ----------
+const COMPANY_ABBR = {
+  'sbi':'State Bank of India', 'pnb':'Punjab National Bank', 'bob':'Bank of Baroda', 'cbk':'Canara Bank',
+  'union':'Union Bank of India', 'boi':'Bank of India', 'inbk':'Indian Bank', 'cbi':'Central Bank of India',
+  'iob':'Indian Overseas Bank', 'bom':'Bank of Maharashtra', 'uco':'UCO Bank', 'pjsb':'Punjab & Sind Bank',
+};
+function expandCompanyName(abbr){
+  const key = abbr.toLowerCase().replace(/[^a-z0-9]/g,'');
+  return COMPANY_ABBR[key] || abbr;
+}
+
+const WIDE_PERIOD_TOKEN_RE = /\b(Q[1-4]FY\d{2,4}|H[1-2]FY\d{2,4}|\d{1,2}MFY\d{2,4}|FY\d{2,4})\b/i;
+
+function parseWideReport(text){
+  const lines = text.split('\n').map(l=>l.replace(/\r$/,''));
+  const blocks = [];
+  let current = null;
+  let awaitingHeader = false;
+
+  for(let i=0;i<lines.length;i++){
+    const line = lines[i];
+    if(!line.trim()) continue;
+    const cells = splitLine(line).map(c=>c.trim()).filter(Boolean);
+
+    const m = line.match(WIDE_PERIOD_TOKEN_RE);
+    const looksLikeTitle = m && cells.length<=4 && !/\d,\d\d\d/.test(line);
+    if(looksLikeTitle){
+      current = { period: m[0].replace(/\s+/g,'').toUpperCase(), companies:null, rows:{} };
+      blocks.push(current);
+      awaitingHeader = true;
+      continue;
+    }
+    if(awaitingHeader){
+      if(cells.length>=4){
+        const candidateCompanies = cells.slice(1).filter(c=>c.length<=20 && !/\d/.test(c));
+        if(candidateCompanies.length>=3){ current.companies = candidateCompanies; awaitingHeader = false; }
+      }
+      continue;
+    }
+    if(current && current.companies){
+      if(cells.length>=2){
+        const name = cells[0];
+        if(/^(income statement|breakup of advances|cost ratios as a)/i.test(name)) continue;
+        const vals = cells.slice(1, 1+current.companies.length).map(v=>{
+          let c=(v||'').replace(/,/g,'').replace(/%/g,'').trim();
+          if(c===''||c==='-') return null;
+          const num = parseFloat(c);
+          return isNaN(num) ? null : num;
+        });
+        if(vals.filter(v=>v!==null).length >= Math.ceil(current.companies.length*0.5)) current.rows[name] = vals;
+      }
+    }
+  }
+  return blocks.filter(b=>b.companies && Object.keys(b.rows).length>0);
+}
+
+function transposeWideBlocks(blocks){
+  const allPeriods = [...new Set(blocks.map(b=>b.period))];
+  const companies = new Set();
+  blocks.forEach(b=>b.companies.forEach(c=>companies.add(c)));
+  const result = {};
+  companies.forEach(co=>{ result[co] = {periods:allPeriods.slice(), metrics:{}}; });
+  blocks.forEach(b=>{
+    const pIdx = allPeriods.indexOf(b.period);
+    Object.entries(b.rows).forEach(([metricName, vals])=>{
+      b.companies.forEach((co,ci)=>{
+        if(!result[co].metrics[metricName]) result[co].metrics[metricName] = new Array(allPeriods.length).fill(null);
+        if(vals[ci]!==null && vals[ci]!==undefined) result[co].metrics[metricName][pIdx] = vals[ci];
+      });
+    });
+  });
+  return {allPeriods, companies:[...companies], result};
+}
+
+// Adds a bank, or merges new periods/metrics into an existing bank of the same name rather than duplicating it.
+function mergeOrAddBank(name, newPeriods, newMetrics){
+  let bank = STATE.banks.find(b=>b.name.toLowerCase()===name.toLowerCase());
+  if(!bank){
+    const resolved = resolveMetrics(newMetrics);
+    STATE.banks.push({name, periods:newPeriods.slice(), metrics:{...newMetrics}, resolved});
+    return {name, merged:false};
+  }
+  const unionP = bank.periods.slice();
+  newPeriods.forEach(p=>{ if(!unionP.includes(p)) unionP.push(p); });
+  const remap = (oldPeriods, oldRow) => unionP.map(p=>{ const idx=oldPeriods.indexOf(p); return idx>=0 ? oldRow[idx] : null; });
+  const merged = {};
+  Object.entries(bank.metrics).forEach(([k,row])=>{ merged[k] = remap(bank.periods, row); });
+  Object.entries(newMetrics).forEach(([k,row])=>{
+    const remapped = remap(newPeriods, row);
+    if(!merged[k]) merged[k] = new Array(unionP.length).fill(null);
+    remapped.forEach((v,i)=>{ if(v!==null && v!==undefined && (merged[k][i]===null || merged[k][i]===undefined)) merged[k][i]=v; });
+  });
+  bank.periods = unionP;
+  bank.metrics = merged;
+  bank.resolved = resolveMetrics(merged);
+  return {name, merged:true};
+}
+
+function quarterKey(label){
+  let m;
+  if(m = label.match(/^Q([1-4])FY(\d{2,4})$/i)) return parseInt(m[2],10)*10 + parseInt(m[1],10);
+  if(m = label.match(/^H([1-2])FY(\d{2,4})$/i)) return parseInt(m[2],10)*10 + (parseInt(m[1],10)===1?2:4);
+  if(m = label.match(/^(\d{1,2})MFY(\d{2,4})$/i)) return parseInt(m[2],10)*10 + Math.min(4, Math.ceil(parseInt(m[1],10)/3)) + 0.5;
+  return null;
+}
 function annualKey(label){ const m=label.match(/^FY(\d{2,4})$/i); if(!m) return null; return parseInt(m[1],10); }
 
 function unionPeriods(mode){
@@ -653,6 +780,7 @@ document.getElementById('addModeToggle').addEventListener('click', (e)=>{
   const mode = btn.dataset.addMode;
   document.getElementById('singleAddBlock').classList.toggle('hidden', mode!=='single');
   document.getElementById('bulkAddBlock').classList.toggle('hidden', mode!=='bulk');
+  document.getElementById('wideAddBlock').classList.toggle('hidden', mode!=='wide');
 });
 
 document.getElementById('loadBulkSample').addEventListener('click', ()=>{
@@ -737,6 +865,81 @@ document.getElementById('addBulkBtn').addEventListener('click', ()=>{
   } else {
     status.className='status ok'; status.textContent = `✓ Added ${added} bank(s). Add more, or build the dashboard.`;
   }
+});
+
+document.getElementById('addWideBtn').addEventListener('click', ()=>{
+  const status = document.getElementById('statusLine');
+  const raw = document.getElementById('wideData').value;
+  if(!raw.trim()){
+    status.className='status err'; status.textContent='Paste or import a peer-comparison report first.'; return;
+  }
+  const blocks = parseWideReport(raw);
+  if(blocks.length===0){
+    status.className='status err'; status.textContent='Couldn\'t find any period-labeled comparison tables (e.g. "Cost Ratios Analysis 9MFY26") in this text.'; return;
+  }
+  const {allPeriods, companies, result} = transposeWideBlocks(blocks);
+  let addedCount=0, mergedCount=0;
+  const names = [];
+  companies.forEach(co=>{
+    const fullName = expandCompanyName(co);
+    const {merged} = mergeOrAddBank(fullName, result[co].periods, result[co].metrics);
+    if(merged) mergedCount++; else addedCount++;
+    names.push(fullName);
+  });
+  renderChips(); updateBuildPanel();
+  document.getElementById('wideData').value='';
+  status.className='status ok';
+  status.textContent = `✓ Found ${blocks.length} period table(s) across ${allPeriods.join(', ')}. Added ${addedCount} new bank(s), merged into ${mergedCount} existing one(s): ${names.join(', ')}.`;
+});
+
+document.getElementById('loadWideSample').addEventListener('click', ()=>{
+  document.getElementById('wideData').value =
+"Public Sector Banks Comparative Analysis\n"+
+"Cost Ratios Analysis\t9MFY26\n"+
+"Particulars (INR in Crores)\tPNB\tUnion\tBOI\tINBK\tCBI\tIOB\tBOM\tUCO\tPJSB\n"+
+"Net Interest Margin (%)\t2.60\t2.72\t2.51\t3.25\t3.00\t3.19\t3.88\t3.03\t2.57\n"+
+"Cost to Income Ratio\t52.85\t49.94\t52.11\t46.40\t58.55\t45.27\t37.29\t53.01\t60.84\n"+
+"Return on Assets\t0.83\t1.20\t0.90\t1.32\t1.02\t1.20\t1.83\t0.75\t0.73\n"+
+"Return on Equity\t14.45\t15.20\t14.49\t19.66\t14.29\t19.98\t23.30\t11.61\t10.62\n"+
+"% of Gross NPAs\t3.19\t3.06\t2.26\t2.23\t2.70\t1.54\t1.60\t2.41\t2.60\n"+
+"\n"+
+"Public Sector Banks Comparative Analysis\n"+
+"Cost Ratios Analysis\tFY25\n"+
+"Particulars (INR in Crores)\tPNB\tUnion\tBOI\tINBK\tCBI\tIOB\tBOM\tUCO\tPJSB\n"+
+"Net Interest Margin (%)\t2.93\t2.91\t2.82\t3.41\t3.40\t3.25\t4.00\t3.08\t2.67\n"+
+"Cost to Income Ratio\t54.59\t45.48\t50.84\t44.77\t58.87\t47.14\t38.37\t56.99\t61.23\n"+
+"Return on Assets\t0.97\t1.26\t0.90\t1.32\t0.86\t0.92\t1.75\t0.76\t0.67\n"+
+"Return on Equity\t19.33\t17.20\t15.27\t20.76\t12.48\t16.28\t22.92\t13.09\t10.82\n"+
+"% of Gross NPAs\t3.95\t3.60\t3.27\t3.09\t3.18\t2.14\t1.74\t2.69\t3.38";
+});
+
+document.getElementById('widePasteBtn').addEventListener('click', async ()=>{
+  const status = document.getElementById('statusLine');
+  try{
+    const text = await navigator.clipboard.readText();
+    if(!text || !text.trim()){ status.className='status err'; status.textContent='Clipboard is empty — copy the report first, then tap this.'; return; }
+    document.getElementById('wideData').value = text;
+    status.className='status ok'; status.textContent='✓ Pasted from clipboard — review below, then click "Add peer report banks".';
+  }catch(err){
+    status.className='status err'; status.textContent = 'Could not read clipboard (' + err.message + '). Try long-pressing the text box below and choosing Paste instead.';
+  }
+});
+
+document.getElementById('wideFileInput').addEventListener('change', async (e)=>{
+  const files = Array.from(e.target.files || []); if(files.length===0) return;
+  const status = document.getElementById('statusLine');
+  status.className='status'; status.textContent = 'Reading '+files.length+' file(s)…';
+  const area = document.getElementById('wideData');
+  for(const file of files){
+    try{
+      const table = await readFileAsTable(file);
+      area.value = (area.value.trim() ? area.value.trim() + '\n\n' : '') + table.trim();
+    }catch(err){
+      status.className='status err'; status.textContent = 'Could not read '+file.name+': '+err.message; return;
+    }
+  }
+  status.className='status ok'; status.textContent = `✓ Loaded ${files.length} file(s) below — review, then click "Add peer report banks".`;
+  e.target.value = '';
 });
 
 document.getElementById('addBankBtn').addEventListener('click', ()=>{
