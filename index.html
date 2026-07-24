@@ -1652,7 +1652,7 @@ function renderAiLog(){
       this.slides.push(slide);
       return slide;
     }
-    async writeFile({fileName}){
+    async getBlob(){
       const files = [];
       const add = (name, content)=> files.push({name, data: typeof content==='string' ? textFile(content) : content});
 
@@ -1738,16 +1738,31 @@ ${relEntries.map(r=>`<Relationship Id="${r.id}" Type="http://schemas.openxmlform
       });
 
       const zipBytes = buildZip(files);
-      const blob = new Blob([zipBytes], {type:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = fileName || 'presentation.pptx';
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(()=> URL.revokeObjectURL(url), 5000);
+      return new Blob([zipBytes], {type:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+    }
+    async writeFile({fileName}){
+      const blob = await this.getBlob();
+      downloadBlobRobustly(blob, fileName || 'presentation.pptx');
     }
   }
   window.MiniPptx = MiniPptx;
 })();
+
+// Shared, more direct download mechanism used by both the real PptxGenJS and the fallback engine.
+// Rather than relying on a library's own internal save routine (which can fail silently in some
+// mobile browsers), this explicitly navigates to the file so the browser's own native
+// download/save UI takes over — a materially different code path than a synthetic link click.
+function downloadBlobRobustly(blob, filename){
+  const url = URL.createObjectURL(blob);
+  let opened = null;
+  try{ opened = window.open(url, '_blank'); }catch(e){ opened = null; }
+  if(!opened){
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+  setTimeout(()=> URL.revokeObjectURL(url), 60000);
+}
 
 async function exportDeck(){
   const status = document.getElementById('statusLine');
@@ -1833,12 +1848,23 @@ async function exportDeck(){
     }
   }
 
-  const filename = 'Peer_Benchmark_Board_Deck.pptx';
-  await pptx.writeFile({fileName:filename});
+  const filename = usingFallback ? 'Peer_Benchmark_Board_Deck_FALLBACK.pptx' : 'Peer_Benchmark_Board_Deck.pptx';
+  let blob;
+  try{
+    blob = usingFallback ? await pptx.getBlob() : await pptx.write({outputType:'blob'});
+  }catch(err){
+    // Some pptxgenjs builds expect write('blob') instead of write({outputType:'blob'}) — try that shape too.
+    try{ blob = usingFallback ? await pptx.getBlob() : await pptx.write('blob'); }
+    catch(err2){
+      status.className='status err'; status.textContent = 'Could not build the file for download: ' + err2.message;
+      return;
+    }
+  }
+  downloadBlobRobustly(blob, filename);
   status.className='status ok';
   status.textContent = usingFallback
-    ? `✓ Downloaded ${filename} (built with the offline fallback engine — if PowerPoint has trouble opening it, reload the page for a stronger connection and export again).`
-    : `✓ Downloaded ${filename}`;
+    ? `✓ Sent ${filename} to your browser (built with the offline fallback engine — if PowerPoint has trouble opening it, reload the page for a stronger connection and export again).`
+    : `✓ Sent ${filename} to your browser — check for a save/download prompt, or look in Files → Downloads.`;
 }
 
 // ---------- Wiring ----------
