@@ -272,6 +272,7 @@ Return on Assets&#9;0.83&#9;1.20&#9;0.90&#9;1.02&#9;1.20..."></textarea>
         <button class="btn-primary" id="buildBtn">Build comparison dashboard</button>
         <button class="btn-ai" id="aiBtn" disabled>✦ Generate AI peer insights</button>
         <button class="btn-ghost hidden" id="exportBtn">⬇ Export board deck (.pptx)</button>
+        <button class="btn-ghost hidden" id="exportPdfBtn">⬇ Export board deck (.pdf)</button>
       </div>
       <div class="toggle-group" id="periodToggle">
         <button data-mode="quarterly" class="active">Quarterly</button>
@@ -1428,11 +1429,11 @@ Respond with ONLY valid JSON, no markdown fences, no preamble, in this exact sha
     STATE.aiSummary = parsed.summary || [];
     status.className='status ok'; status.textContent='✓ AI peer insights ready — captured below and across the charts, or export the deck.';
     renderCharts(); renderSummary(); renderAiLog();
-    document.getElementById('exportBtn').classList.remove('hidden');
+    document.getElementById('exportBtn').classList.remove('hidden'); document.getElementById('exportPdfBtn').classList.remove('hidden');
   }catch(err){
     console.error(err);
     status.className='status err'; status.textContent='Could not generate AI insights: '+err.message+'. Charts still work with computed deltas — try the button again in a moment.';
-    document.getElementById('exportBtn').classList.remove('hidden');
+    document.getElementById('exportBtn').classList.remove('hidden'); document.getElementById('exportPdfBtn').classList.remove('hidden');
   } finally { btn.disabled=false; btn.textContent='✦ Generate AI peer insights'; }
 }
 
@@ -1469,6 +1470,195 @@ function renderAiLog(){
 }
 
 // ---------- Export ----------
+// ================= MiniPdf: self-contained .pdf writer (no external library) =================
+// A hand-built PDF generator using only browser-native APIs. PDF's page/content-stream model is
+// simpler and more forgiving than OOXML, and doesn't depend on any office application to open —
+// every modern browser and OS renders PDFs natively.
+(function(){
+  const PT_W = 960, PT_H = 540; // 13.333in x 7.5in @ 72pt/in — matches the pptx widescreen size
+  const enc = new TextEncoder();
+
+  function sanitizeText(s){
+    return String(s===undefined||s===null?'':s)
+      .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2013\u2014]/g, '-').replace(/\u2026/g, '...')
+      .replace(/[\u2022\u25AA\u2726\u2727\u2728\u2606\u2605]/g, '*')
+      .replace(/[\u2713\u2714]/g, '')
+      .replace(/\u20B9/g, 'Rs.')
+      .replace(/\u2019/g, "'")
+      .replace(/[^\x20-\x7E]/g, '?'); // strip anything outside printable ASCII (safe with base-14 fonts, no embedding needed)
+  }
+  function pdfLit(s){ return '(' + sanitizeText(s).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)') + ')'; }
+  function wrapText(text, maxChars){
+    const words = sanitizeText(text).split(/\s+/);
+    const lines = []; let line = '';
+    words.forEach(w=>{
+      const test = line ? line+' '+w : w;
+      if(test.length > maxChars && line){ lines.push(line); line = w; } else { line = test; }
+    });
+    if(line) lines.push(line);
+    return lines;
+  }
+  function runLengthEncode(bytes){
+    const out = []; let i=0; const n=bytes.length;
+    while(i<n){
+      let runLen=1;
+      while(i+runLen<n && bytes[i+runLen]===bytes[i] && runLen<128) runLen++;
+      if(runLen>=2){ out.push(257-runLen); out.push(bytes[i]); i+=runLen; }
+      else{
+        let start=i, litLen=0;
+        while(i<n && litLen<128){ if(i+1<n && bytes[i]===bytes[i+1]) break; litLen++; i++; }
+        if(litLen===0){ litLen=1; i++; }
+        out.push(litLen-1);
+        for(let k=0;k<litLen;k++) out.push(bytes[start+k]);
+      }
+    }
+    out.push(128);
+    return new Uint8Array(out);
+  }
+  const HEX = c => Math.round(Math.max(0,Math.min(1,c))*255).toString(16).padStart(2,'0');
+  function hexToRgb01(hex){
+    hex = (hex||'000000').replace('#','');
+    return [parseInt(hex.slice(0,2),16)/255, parseInt(hex.slice(2,4),16)/255, parseInt(hex.slice(4,6),16)/255];
+  }
+
+  class MiniPdf {
+    constructor(){ this.pages = []; }
+    addPage(){
+      const page = { ops: [], images: [] };
+      this.pages.push(page);
+      const self = this;
+      return {
+        addTitle(text, x, y, size){ page.ops.push({t:'text', text, x, y, size, font:'F2', color:[0.93,0.94,0.96]}); },
+        addText(text, x, y, size, opts){
+          opts = opts||{};
+          page.ops.push({t:'text', text, x, y, size, font: opts.bold?'F2':(opts.mono?'F3':'F1'), color: opts.color?hexToRgb01(opts.color):[0.93,0.94,0.96]});
+        },
+        addWrapped(text, x, y, size, maxChars, lineHeight, opts){
+          opts = opts||{};
+          const lines = wrapText(text, maxChars);
+          lines.forEach((l,i)=> page.ops.push({t:'text', text:l, x, y: y-i*lineHeight, size, font: opts.bold?'F2':(opts.mono?'F3':'F1'), color: opts.color?hexToRgb01(opts.color):[0.93,0.94,0.96]}));
+          return y - lines.length*lineHeight;
+        },
+        addRect(x,y,w,h,color){ page.ops.push({t:'rect', x,y,w,h, color:hexToRgb01(color)}); },
+        addLine(x1,y1,x2,y2,color,width){ page.ops.push({t:'line', x1,y1,x2,y2, color:hexToRgb01(color), width:width||1}); },
+        addImageFromCanvas(canvas, x, y, w, h){
+          try{
+            const maxW = 620, maxH = 360;
+            const off = document.createElement('canvas');
+            const scale = Math.min(1, maxW/canvas.width, maxH/canvas.height);
+            off.width = Math.max(1,Math.round(canvas.width*scale));
+            off.height = Math.max(1,Math.round(canvas.height*scale));
+            const octx = off.getContext('2d');
+            octx.drawImage(canvas, 0,0, off.width, off.height);
+            const imgData = octx.getImageData(0,0,off.width,off.height).data;
+            const rgb = new Uint8Array(off.width*off.height*3);
+            for(let i=0,j=0;i<imgData.length;i+=4,j+=3){ rgb[j]=imgData[i]; rgb[j+1]=imgData[i+1]; rgb[j+2]=imgData[i+2]; }
+            const img = {w:off.width, h:off.height, rgb: runLengthEncode(rgb)};
+            page.images.push(img);
+            page.ops.push({t:'image', img, x, y, w, h});
+          }catch(e){ /* skip image if canvas isn't readable for any reason */ }
+        },
+      };
+    }
+    async getBlob(){
+      const chunks = []; let offset = 0;
+      const offsets = [];
+      function push(str){ const b = typeof str==='string' ? enc.encode(str) : str; chunks.push(b); offset += b.length; }
+      function beginObj(id){ offsets[id] = offset; push(`${id} 0 obj\n`); }
+      function endObj(){ push('endobj\n'); }
+
+      // Object numbering plan: 1=Catalog, 2=Pages, then per page: page obj, content stream obj, image objs
+      const pageCount = this.pages.length;
+      let nextId = 3;
+      const pageObjIds = [];
+      const contentObjIds = [];
+      const imageObjIdsPerPage = [];
+      this.pages.forEach(p=>{
+        pageObjIds.push(nextId++);
+        contentObjIds.push(nextId++);
+        const imgIds = p.images.map(()=> nextId++);
+        imageObjIdsPerPage.push(imgIds);
+      });
+      const fontF1 = nextId++, fontF2 = nextId++, fontF3 = nextId++;
+
+      push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+
+      beginObj(1);
+      push(`<< /Type /Catalog /Pages 2 0 R >>\n`);
+      endObj();
+
+      beginObj(2);
+      push(`<< /Type /Pages /Kids [${pageObjIds.map(id=>id+' 0 R').join(' ')}] /Count ${pageCount} >>\n`);
+      endObj();
+
+      this.pages.forEach((p, idx)=>{
+        const pageId = pageObjIds[idx];
+        const contentId = contentObjIds[idx];
+        const imgIds = imageObjIdsPerPage[idx];
+
+        // Build content stream
+        let cs = '';
+        p.ops.forEach(op=>{
+          if(op.t==='text'){
+            cs += `q ${op.color[0].toFixed(3)} ${op.color[1].toFixed(3)} ${op.color[2].toFixed(3)} rg BT /${op.font} ${op.size} Tf ${op.x.toFixed(2)} ${op.y.toFixed(2)} Td ${pdfLit(op.text)} Tj ET Q\n`;
+          } else if(op.t==='rect'){
+            cs += `q ${op.color[0].toFixed(3)} ${op.color[1].toFixed(3)} ${op.color[2].toFixed(3)} rg ${op.x.toFixed(2)} ${op.y.toFixed(2)} ${op.w.toFixed(2)} ${op.h.toFixed(2)} re f Q\n`;
+          } else if(op.t==='line'){
+            cs += `q ${op.color[0].toFixed(3)} ${op.color[1].toFixed(3)} ${op.color[2].toFixed(3)} RG ${op.width} w ${op.x1.toFixed(2)} ${op.y1.toFixed(2)} m ${op.x2.toFixed(2)} ${op.y2.toFixed(2)} l S Q\n`;
+          } else if(op.t==='image'){
+            const ii = p.images.indexOf(op.img);
+            cs += `q ${op.w.toFixed(2)} 0 0 ${op.h.toFixed(2)} ${op.x.toFixed(2)} ${op.y.toFixed(2)} cm /Im${ii} Do Q\n`;
+          }
+        });
+
+        const xObjEntries = imgIds.map((id,i)=> `/Im${i} ${id} 0 R`).join(' ');
+        beginObj(pageId);
+        push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PT_W} ${PT_H}] /Resources << /Font << /F1 ${fontF1} 0 R /F2 ${fontF2} 0 R /F3 ${fontF3} 0 R >> /XObject << ${xObjEntries} >> >> /Contents ${contentId} 0 R >>\n`);
+        endObj();
+
+        const csBytes = enc.encode(cs);
+        beginObj(contentId);
+        push(`<< /Length ${csBytes.length} >>\nstream\n`);
+        push(csBytes);
+        push('\nendstream\n');
+        endObj();
+
+        p.images.forEach((img, i)=>{
+          beginObj(imgIds[i]);
+          push(`<< /Type /XObject /Subtype /Image /Width ${img.w} /Height ${img.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /RunLengthDecode /Length ${img.rgb.length} >>\nstream\n`);
+          push(img.rgb);
+          push('\nendstream\n');
+          endObj();
+        });
+      });
+
+      beginObj(fontF1); push(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\n`); endObj();
+      beginObj(fontF2); push(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\n`); endObj();
+      beginObj(fontF3); push(`<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>\n`); endObj();
+
+      const xrefStart = offset;
+      const totalObjs = fontF3;
+      push(`xref\n0 ${totalObjs+1}\n`);
+      push('0000000000 65535 f \n');
+      for(let id=1; id<=totalObjs; id++){
+        push(String(offsets[id]).padStart(10,'0') + ' 00000 n \n');
+      }
+      push(`trailer\n<< /Size ${totalObjs+1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+
+      let total=0; chunks.forEach(c=>total+=c.length);
+      const out = new Uint8Array(total); let pos=0;
+      chunks.forEach(c=>{ out.set(c,pos); pos+=c.length; });
+      return new Blob([out], {type:'application/pdf'});
+    }
+    async writeFile({fileName}){
+      const blob = await this.getBlob();
+      downloadBlobRobustly(blob, fileName || 'document.pdf');
+    }
+  }
+  window.MiniPdf = MiniPdf;
+})();
+
 // ================= MiniPptx: self-contained .pptx writer (no external library) =================
 // Builds a real OOXML PowerPoint file (a ZIP of XML parts) using only browser-native APIs
 // (TextEncoder, DataView, Blob). Implements just the subset of the PptxGenJS API this app
@@ -1770,6 +1960,100 @@ function downloadBlobRobustly(blob, filename){
   setTimeout(()=> URL.revokeObjectURL(url), 60000);
 }
 
+async function exportDeckPDF(){
+  const status = document.getElementById('statusLine');
+  status.className='status'; status.textContent='Building PDF…';
+  const pdf = new MiniPdf();
+  const W = 960, H = 540, M = 40; // page pt size and margin
+  const topY = (inchesFromTop)=> H - inchesFromTop;
+  const labels = unionPeriods(STATE.mode); const latest = labels[labels.length-1];
+
+  // Title page
+  let p1 = pdf.addPage();
+  p1.addTitle('Peer Benchmarking', M, H-110, 32);
+  p1.addWrapped(STATE.banks.map(b=>b.name).join('  ·  '), M, H-150, 13, 120, 17, {color:'C9A24B'});
+  p1.addText(`Latest period: ${latest||''}`, M, H-190, 11, {color:'8A93AC'});
+  p1.addLine(M, H-210, M+300, H-210, 'C9A24B', 1.5);
+
+  // Summary page
+  const deckSummary = effectiveSummary();
+  if(deckSummary && deckSummary.length){
+    let sx = pdf.addPage();
+    sx.addTitle('Peer Takeaways', M, H-50, 22);
+    sx.addLine(M, H-64, M+90, H-64, 'C9A24B', 2);
+    let y = H-100;
+    deckSummary.forEach(b=>{ y = sx.addWrapped('* ' + b, M, y, 13, 115, 18) - 8; });
+  }
+
+  // Leaderboard — chunk banks into groups of 6 columns per page for readability
+  const bankChunks = [];
+  for(let i=0;i<STATE.banks.length;i+=6) bankChunks.push(STATE.banks.slice(i,i+6));
+  bankChunks.forEach((chunk, ci)=>{
+    let lb = pdf.addPage();
+    lb.addTitle(`Peer Leaderboard${bankChunks.length>1?` (${ci+1}/${bankChunks.length})`:''}`, M, H-50, 20);
+    lb.addText(`As of ${latest||''}`, M, H-70, 10, {color:'8A93AC'});
+    const colW = 18;
+    let ty = H-100;
+    lb.addText('Metric'.padEnd(20) + chunk.map(b=>b.name.slice(0,colW-1).padEnd(colW)).join(''), M, ty, 9, {mono:true, bold:true, color:'C9A24B'});
+    ty -= 18;
+    LB_METRICS.forEach(mk=>{
+      const def = METRIC_DEFS.find(d=>d.key===mk);
+      const vals = chunk.map(b=>{ const s=seriesForBank(b, mk, labels); return s? s[s.length-1]:null; });
+      const line = def.label.slice(0,19).padEnd(20) + vals.map(v=> fmt(v, def.type).padEnd(colW)).join('');
+      lb.addText(line, M, ty, 9, {mono:true});
+      ty -= 16;
+    });
+  });
+
+  // Per-metric chart pages
+  for(const def of METRIC_DEFS){
+    const chart = STATE.charts[def.key]; if(!chart) continue;
+    const canvasEl = document.getElementById('cv_'+def.key);
+    let cs = pdf.addPage();
+    cs.addTitle(def.label, M, H-40, 18);
+    cs.addText(`${def.section} — by bank, ${STATE.mode}`, M, H-58, 10, {color:'8A93AC'});
+    if(canvasEl) cs.addImageFromCanvas(canvasEl, M, H-370, 560, 300);
+    let notes = [];
+    STATE.banks.forEach(b=>{
+      const deckInsights = effectiveInsights();
+      const ai = deckInsights && deckInsights[def.key] && deckInsights[def.key][b.name];
+      if(ai) notes.push(`${b.name}: ${ai}`);
+      else { const s=seriesForBank(b, def.key, labels); if(s){ const dt=deltaText(s, s.length-1); if(dt) notes.push(`${b.name}: ${dt}`); } }
+    });
+    if(notes.length){
+      cs.addText(`AS OF ${latest||''}`, 620, H-90, 9, {bold:true, color:'C9A24B'});
+      let ny = H-108;
+      notes.forEach(n=>{ ny = cs.addWrapped('- '+n, 620, ny, 9, 44, 12) - 4; });
+    }
+  }
+
+  // AI Insight Log appendix
+  const appendixInsights = effectiveInsights();
+  if(appendixInsights && Object.keys(appendixInsights).length){
+    let logRows = [];
+    METRIC_DEFS.forEach(def=>{
+      const entries = appendixInsights[def.key];
+      if(!entries) return;
+      STATE.banks.forEach(b=>{ const text = entries[b.name]; if(text) logRows.push([def.label, b.name, text]); });
+    });
+    const CHUNK = 10;
+    for(let i=0;i<logRows.length;i+=CHUNK){
+      const chunk = logRows.slice(i, i+CHUNK);
+      let ap = pdf.addPage();
+      ap.addTitle(`AI Insight Log${logRows.length>CHUNK?` (${Math.floor(i/CHUNK)+1}/${Math.ceil(logRows.length/CHUNK)})`:''}`, M, H-40, 18);
+      let ry = H-70;
+      chunk.forEach(r=>{
+        ry = ap.addWrapped(`${r[0]} | ${r[1]}: ${r[2]}`, M, ry, 10, 130, 13) - 6;
+      });
+    }
+  }
+
+  const filename = 'Peer_Benchmark_Board_Deck.pdf';
+  const blob = await pdf.getBlob();
+  downloadBlobRobustly(blob, filename);
+  status.className='status ok'; status.textContent = `✓ Downloaded ${filename}`;
+}
+
 async function exportDeck(){
   const status = document.getElementById('statusLine');
   status.className='status'; status.textContent='Building PowerPoint…';
@@ -1881,11 +2165,13 @@ document.getElementById('buildBtn').addEventListener('click', ()=>{
   STATE.aiInsights=null; STATE.aiSummary=null; // clears only the live layer — baked insights are untouched
   renderLeaderboard(); renderCharts(); renderSummary(); renderAiLog();
   document.getElementById('exportBtn').classList.toggle('hidden', !effectiveInsights() && !effectiveSummary());
+  document.getElementById('exportPdfBtn').classList.toggle('hidden', !effectiveInsights() && !effectiveSummary());
   status.className='status ok';
   status.textContent = `✓ Dashboard built for ${STATE.banks.length} bank(s).`;
 });
 document.getElementById('aiBtn').addEventListener('click', generateInsights);
 document.getElementById('exportBtn').addEventListener('click', exportDeck);
+document.getElementById('exportPdfBtn').addEventListener('click', exportDeckPDF);
 document.getElementById('periodToggle').addEventListener('click', (e)=>{
   const btn = e.target.closest('button'); if(!btn) return;
   document.querySelectorAll('#periodToggle button').forEach(b=>b.classList.remove('active'));
