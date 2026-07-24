@@ -1754,13 +1754,9 @@ ${relEntries.map(r=>`<Relationship Id="${r.id}" Type="http://schemas.openxmlform
 // download/save UI takes over — a materially different code path than a synthetic link click.
 function downloadBlobRobustly(blob, filename){
   const url = URL.createObjectURL(blob);
-  let opened = null;
-  try{ opened = window.open(url, '_blank'); }catch(e){ opened = null; }
-  if(!opened){
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  }
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(()=> URL.revokeObjectURL(url), 60000);
 }
 
@@ -1863,8 +1859,8 @@ async function exportDeck(){
   downloadBlobRobustly(blob, filename);
   status.className='status ok';
   status.textContent = usingFallback
-    ? `✓ Sent ${filename} to your browser (built with the offline fallback engine — if PowerPoint has trouble opening it, reload the page for a stronger connection and export again).`
-    : `✓ Sent ${filename} to your browser — check for a save/download prompt, or look in Files → Downloads.`;
+    ? `✓ Downloaded ${filename} (built with the offline fallback engine — if PowerPoint has trouble opening it, reload the page for a stronger connection and export again).`
+    : `✓ Downloaded ${filename}`;
 }
 
 // ---------- Wiring ----------
