@@ -615,7 +615,7 @@ document.getElementById('loadSample').addEventListener('click', ()=>{
 
 // ---------- Add-mode toggle ----------
 // ---------- File import ----------
-function readFileAsTable(file){
+function readFileAsTable(file, onProgress){
   return new Promise((resolve, reject)=>{
     const ext = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
@@ -634,7 +634,7 @@ function readFileAsTable(file){
 
     } else if(ext==='pdf'){
       if(typeof pdfjsLib === 'undefined'){ reject(new Error('PDF import unavailable — PDF.js library did not load. Try reloading, or paste/import a CSV/Excel version instead.')); return; }
-      file.arrayBuffer().then(buf=> extractTableFromPDF(buf)).then(text=> resolve(trimToFirstTable(text))).catch(reject);
+      file.arrayBuffer().then(buf=> extractTableFromPDF(buf, onProgress)).then(text=> resolve(trimToFirstTable(text))).catch(reject);
 
     } else if(ext==='csv' || ext==='tsv' || ext==='txt'){
       reader.onload = (e)=>{
@@ -689,10 +689,11 @@ function trimToFirstTable(text){
   return text; // no clear header found — hand back everything and let the user clean it up
 }
 
-async function extractTableFromPDF(arrayBuffer){
+async function extractTableFromPDF(arrayBuffer, onProgress){
   const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
   const lines = [];
   for(let p=1; p<=pdf.numPages; p++){
+    if(onProgress && (p % 5 === 0 || p===pdf.numPages)) onProgress(p, pdf.numPages);
     const page = await pdf.getPage(p);
     const content = await page.getTextContent();
     if(content.items.length===0) continue;
@@ -716,6 +717,9 @@ async function extractTableFromPDF(arrayBuffer){
       if(line.trim()) lines.push(line);
     });
     lines.push(''); // blank line between pages
+    // Yield to the browser every few pages so the tab stays responsive and the status text can repaint
+    // — long unbroken synchronous work is exactly what makes large PDFs look frozen on mobile.
+    if(p % 5 === 0) await new Promise(r=>setTimeout(r, 0));
   }
   return lines.join('\n');
 }
@@ -781,7 +785,9 @@ document.getElementById('singleFileInput').addEventListener('change', async (e)=
   const status = document.getElementById('statusLine');
   status.className='status'; status.textContent = 'Reading '+file.name+'…';
   try{
-    const raw = await readFileAsTable(file);
+    const raw = await readFileAsTable(file, (p,total)=>{
+      status.textContent = `Reading ${file.name}… page ${p} of ${total}${total>60 ? ' (large file — this may take a few minutes on mobile)' : ''}`;
+    });
     const extracted = extractBankNameAndTable(raw, niceNameFromFile(file.name));
     document.getElementById('rawData').value = extracted.table;
     document.getElementById('bankName').value = extracted.name;
@@ -802,7 +808,9 @@ document.getElementById('bulkFileInput').addEventListener('change', async (e)=>{
   const names = [];
   for(const file of files){
     try{
-      const raw = await readFileAsTable(file);
+      const raw = await readFileAsTable(file, (p,total)=>{
+        status.textContent = `Reading ${file.name}… page ${p} of ${total}${total>60 ? ' (large file — this may take a few minutes on mobile)' : ''}`;
+      });
       if(raw.trim().startsWith('###')){
         area.value = (area.value.trim() ? area.value.trim() + '\n\n' : '') + raw.trim();
       } else {
@@ -977,7 +985,9 @@ document.getElementById('wideFileInput').addEventListener('change', async (e)=>{
   const area = document.getElementById('wideData');
   for(const file of files){
     try{
-      const table = await readFileAsTable(file);
+      const table = await readFileAsTable(file, (p,total)=>{
+        status.textContent = `Reading ${file.name}… page ${p} of ${total}${total>60 ? ' — large file, this can take several minutes on mobile. Keep this tab open and active.' : ''}`;
+      });
       area.value = (area.value.trim() ? area.value.trim() + '\n\n' : '') + table.trim();
     }catch(err){
       status.className='status err'; status.textContent = 'Could not read '+file.name+': '+err.message; return;
