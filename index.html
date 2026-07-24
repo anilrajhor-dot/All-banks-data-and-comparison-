@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js" crossorigin="anonymous"></script>
 <style>
   :root{
     --bg:#0A0D16; --panel:#111527; --panel2:#171C33; --raise:#1D2340;
@@ -24,6 +25,7 @@
   header{padding:36px 40px 24px; border-bottom:1px solid var(--border); position:relative;}
   .eyebrow{font-family:'IBM Plex Mono',monospace; letter-spacing:0.18em; font-size:11px; color:var(--accent); text-transform:uppercase; margin-bottom:10px;}
   h1{font-family:'Space Grotesk',sans-serif; font-size:32px; margin:0 0 6px; font-weight:600; letter-spacing:-0.01em;}
+  .byline{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-bottom:14px;}
   .sub{color:var(--muted); font-size:14px; max-width:680px; line-height:1.5;}
   .ledger-line{position:absolute; left:0; right:0; bottom:-1px; height:1px;
     background:repeating-linear-gradient(90deg, var(--border) 0 6px, transparent 6px 12px);}
@@ -148,6 +150,7 @@
 <header>
   <div class="eyebrow">Bank Peer Intelligence</div>
   <h1>Ledger</h1>
+  <div class="byline">by Anil Sharma, Former General Manager, Central Bank of India</div>
   <div class="sub">Add each bank's results table one at a time, or paste your whole peer set in a single box. Ledger lines them up period-by-period, charts every parameter side by side, ranks the peer set, and explains — on hover and in an exportable board deck — who's leading, who's lagging, and why.</div>
   <div class="ledger-line"></div>
 </header>
@@ -181,8 +184,8 @@
       </div>
       <div class="row" style="margin-top:12px;">
         <div>
-          <label>Or import a file directly (.csv/.tsv/.xlsx/.txt)</label>
-          <input type="file" id="singleFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls" />
+          <label>Or import a file directly (.csv, .tsv, .txt, .xlsx, .xls, .pdf)</label>
+          <input type="file" id="singleFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf" />
         </div>
       </div>
       <div class="desc" style="margin:8px 0 0;">Paste directly below, or import a file — either way you'll be able to check/edit it before adding.</div>
@@ -202,8 +205,8 @@ Net Interest Margin (%)&#9;7.20&#9;7.30&#9;7.90...
       </div>
       <div class="row" style="margin-top:12px;">
         <div>
-          <label>Or import file(s) directly (.csv/.tsv/.xlsx/.txt) — pick multiple, one per bank</label>
-          <input type="file" id="bulkFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls" multiple />
+          <label>Or import file(s) directly (.csv, .tsv, .txt, .xlsx, .xls, .pdf) — pick multiple, one per bank</label>
+          <input type="file" id="bulkFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf" multiple />
         </div>
       </div>
       <div class="desc" style="margin:4px 0 0;">Selecting files appends each one below, tagged with a <code class="mono">### filename</code> marker — one file per bank works best (e.g. SuryodayResults.xlsx, AUBankResults.csv). Rename the <code class="mono">### ...</code> lines below if you want cleaner bank names.</div>
@@ -261,7 +264,7 @@ Net Interest Margin (%)&#9;5.80&#9;6.10&#9;..."></textarea>
 
 </main>
 
-<footer>Runs entirely in this chat — your data isn't stored anywhere. AI insights are generated on demand from the numbers you pasted.</footer>
+<footer>Application developed by Anil Sharma, Former General Manager, Central Bank of India.<br>AI insights are generated on demand from the numbers you provide.</footer>
 
 <script>
 // ---------- Library availability check (runs first). Charts are self-contained; this only checks XLSX/PptxGenJS ----------
@@ -269,6 +272,7 @@ function checkLibraries(){
   const missing = [];
   if(typeof XLSX === 'undefined') missing.push('SheetJS (.xlsx import)');
   if(typeof PptxGenJS === 'undefined') missing.push('PptxGenJS (.pptx export)');
+  if(typeof pdfjsLib === 'undefined') missing.push('PDF.js (.pdf import)');
   if(missing.length){
     const w = document.getElementById('libWarning');
     document.getElementById('libWarningDetail').textContent = `Missing: ${missing.join(', ')}.`;
@@ -277,6 +281,9 @@ function checkLibraries(){
   return missing;
 }
 const MISSING_LIBS = checkLibraries();
+if(typeof pdfjsLib !== 'undefined'){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js';
+}
 
 window.addEventListener('error', (e)=>{
   // Surfaces genuine runtime errors in the status line instead of failing silently.
@@ -442,8 +449,9 @@ function readFileAsTable(file){
   return new Promise((resolve, reject)=>{
     const ext = file.name.split('.').pop().toLowerCase();
     const reader = new FileReader();
+
     if(ext==='xlsx' || ext==='xls'){
-      if(typeof XLSX === 'undefined'){ reject(new Error('Excel import unavailable — SheetJS library did not load. Try a .csv/.tsv/.txt file instead, or reload the page.')); return; }
+      if(typeof XLSX === 'undefined'){ reject(new Error('Excel import unavailable — SheetJS library did not load. Try reloading, or paste/import a CSV/PDF version instead.')); return; }
       reader.onload = (e)=>{
         try{
           const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
@@ -453,10 +461,34 @@ function readFileAsTable(file){
       };
       reader.onerror = ()=>reject(new Error('could not read '+file.name));
       reader.readAsArrayBuffer(file);
-    } else {
+
+    } else if(ext==='pdf'){
+      if(typeof pdfjsLib === 'undefined'){ reject(new Error('PDF import unavailable — PDF.js library did not load. Try reloading, or paste/import a CSV/Excel version instead.')); return; }
+      file.arrayBuffer().then(buf=> extractTableFromPDF(buf)).then(text=> resolve(trimToFirstTable(text))).catch(reject);
+
+    } else if(ext==='csv' || ext==='tsv' || ext==='txt'){
       reader.onload = (e)=>{
         let text = e.target.result;
-        // if it's comma-separated (.csv) and has no tabs, convert commas outside quotes to tabs
+        if(!text.includes('\t') && text.includes(',')){
+          text = text.split('\n').map(line=>line.split(',').map(c=>c.trim()).join('\t')).join('\n');
+        }
+        resolve(text);
+      };
+      reader.onerror = ()=>reject(new Error('could not read '+file.name));
+      reader.readAsText(file);
+
+    } else {
+      // Unknown extension: best effort — try reading as plain text (works for many
+      // text-ish exports); if it looks like binary garbage, fail with a clear message
+      // rather than silently inserting junk.
+      reader.onload = (e)=>{
+        let text = e.target.result;
+        // crude binary-content check: lots of null/control characters means this isn't text
+        const controlChars = (text.match(/[\x00-\x08\x0E-\x1F]/g) || []).length;
+        if(controlChars > text.length * 0.02){
+          reject(new Error(`.${ext} isn't a format this app can read directly. Try exporting it as .csv, .xlsx, or .pdf instead.`));
+          return;
+        }
         if(!text.includes('\t') && text.includes(',')){
           text = text.split('\n').map(line=>line.split(',').map(c=>c.trim()).join('\t')).join('\n');
         }
@@ -467,6 +499,57 @@ function readFileAsTable(file){
     }
   });
 }
+
+// Best-effort table reconstruction from a PDF's extracted text. PDFs don't store real table
+// structure — this groups text by row (Y position) and inserts tab breaks at wide horizontal
+// gaps between text runs (i.e. column boundaries). Works well for the clean, ruled financial
+// tables this app expects; always worth reviewing the result before adding the bank.
+// Multi-page PDFs (title slide, disclaimers, etc.) produce a lot of noise before the actual
+// table. Scan for the first row that genuinely looks like a period header (several cells
+// matching Q1FY27 / FY26-style labels) and cut everything before it.
+function trimToFirstTable(text){
+  const lines = text.split('\n');
+  for(let i=0;i<lines.length;i++){
+    const cells = lines[i].includes('\t') ? lines[i].split('\t') : lines[i].split(/\s{2,}/);
+    const periodLike = cells.filter(c=>/^Q[1-4]\s*FY\s*\d{2,4}$/i.test(c.trim()) || /^FY\s*\d{2,4}$/i.test(c.trim()));
+    if(periodLike.length>=3){
+      return lines.slice(i).join('\n');
+    }
+  }
+  return text; // no clear header found — hand back everything and let the user clean it up
+}
+
+async function extractTableFromPDF(arrayBuffer){
+  const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+  const lines = [];
+  for(let p=1; p<=pdf.numPages; p++){
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    if(content.items.length===0) continue;
+    const rows = {};
+    content.items.forEach(item=>{
+      const y = item.transform[5];
+      const bucket = Math.round(y/4)*4; // merge text runs on (roughly) the same line
+      (rows[bucket] = rows[bucket] || []).push({x:item.transform[4], w:item.width||0, text:item.str});
+    });
+    const ys = Object.keys(rows).map(Number).sort((a,b)=>b-a); // top of page first
+    ys.forEach(y=>{
+      const items = rows[y].filter(it=>it.text.trim().length>0).sort((a,b)=>a.x-b.x);
+      if(items.length===0) return;
+      let line = items[0].text;
+      let prevEnd = items[0].x + items[0].w;
+      for(let i=1;i<items.length;i++){
+        const gap = items[i].x - prevEnd;
+        line += (gap > 6 ? '\t' : (gap > 1 ? ' ' : '')) + items[i].text;
+        prevEnd = items[i].x + items[i].w;
+      }
+      if(line.trim()) lines.push(line);
+    });
+    lines.push(''); // blank line between pages
+  }
+  return lines.join('\n');
+}
+
 function niceNameFromFile(filename){
   return filename.replace(/\.[^/.]+$/, '').replace(/[_\-]+/g,' ').trim();
 }
@@ -532,7 +615,9 @@ document.getElementById('singleFileInput').addEventListener('change', async (e)=
     const extracted = extractBankNameAndTable(raw, niceNameFromFile(file.name));
     document.getElementById('rawData').value = extracted.table;
     document.getElementById('bankName').value = extracted.name;
-    status.className='status ok'; status.textContent = `✓ Loaded ${file.name} as "${extracted.name}" — review below, then click "Add bank".`;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const pdfNote = ext==='pdf' ? ' PDF tables are reconstructed automatically — please check the columns lined up correctly.' : '';
+    status.className='status ok'; status.textContent = `✓ Loaded ${file.name} as "${extracted.name}" — review below, then click "Add bank".${pdfNote}`;
   }catch(err){
     status.className='status err'; status.textContent = 'Could not read '+file.name+': '+err.message;
   }
