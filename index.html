@@ -142,6 +142,24 @@
   .lib-warning b{color:#fff;}
 
   .hidden{display:none !important;}
+  .modal-backdrop{position:fixed; inset:0; background:rgba(5,7,14,0.78); backdrop-filter:blur(3px);
+    z-index:10000; display:none; align-items:flex-start; justify-content:center; padding:24px 14px; overflow-y:auto;}
+  .modal-backdrop.show{display:flex; animation:fadeSlideUp .25s ease both;}
+  .modal-card{background:linear-gradient(180deg, var(--panel), var(--panel2)); border:1px solid var(--border);
+    border-radius:16px; padding:22px; max-width:640px; width:100%; margin-top:20px; box-shadow:0 30px 70px -20px rgba(0,0,0,0.7);}
+  .modal-head{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px;}
+  .modal-title{font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:600;}
+  .modal-sub{color:var(--accent); font-size:12px; font-family:'IBM Plex Mono',monospace; margin-top:3px;}
+  .modal-close{background:var(--raise); border:1px solid var(--border); color:var(--text); width:34px; height:34px;
+    border-radius:50%; font-size:15px; flex-shrink:0; cursor:pointer;}
+  .modal-chart-img{width:100%; border-radius:10px; margin-bottom:16px; background:#0D1120; display:block;}
+  .modal-rows{display:flex; flex-direction:column; gap:10px;}
+  .modal-row{background:#0D1120; border:1px solid var(--border); border-radius:10px; padding:12px 14px;}
+  .modal-row .rb-name{display:flex; align-items:center; gap:8px; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; margin-bottom:4px;}
+  .modal-row .rb-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .modal-row .rb-val{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted);}
+  .modal-row .rb-ai{font-size:12.5px; color:var(--accent); margin-top:6px; line-height:1.5;}
+
   footer{text-align:center; color:var(--faint); font-size:11px; padding:20px; font-family:'IBM Plex Mono',monospace;}
 </style>
 </head>
@@ -286,6 +304,20 @@ Return on Assets&#9;0.83&#9;1.20&#9;0.90&#9;1.02&#9;1.20..."></textarea>
 
 </main>
 
+<div class="modal-backdrop" id="chartModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modalTitle">Metric</div>
+        <div class="modal-sub" id="modalSub">Period</div>
+      </div>
+      <button class="modal-close" id="modalCloseBtn">✕</button>
+    </div>
+    <img id="modalChartImg" class="modal-chart-img" />
+    <div id="modalRows" class="modal-rows"></div>
+  </div>
+</div>
+
 <footer>Application developed by Anil Sharma, Former General Manager, Central Bank of India.<br>AI insights are generated on demand from the numbers you provide.</footer>
 
 <script>
@@ -412,6 +444,8 @@ function parseWideReport(text){
   const blocks = [];
   let current = null;
   let awaitingHeader = false;
+  let headerSearchCount = 0;
+  const MAX_HEADER_LOOKAHEAD = 5;
 
   for(let i=0;i<lines.length;i++){
     const line = lines[i];
@@ -424,12 +458,21 @@ function parseWideReport(text){
       current = { period: m[0].replace(/\s+/g,'').toUpperCase(), companies:null, rows:{} };
       blocks.push(current);
       awaitingHeader = true;
+      headerSearchCount = 0;
       continue;
     }
     if(awaitingHeader){
-      if(cells.length>=4){
+      headerSearchCount++;
+      // Real header rows in these reports always start with "Particulars" — this is the strongest
+      // signal that distinguishes an actual comparison table from stray chart/legend text.
+      if(cells.length>=4 && /particulars/i.test(cells[0])){
         const candidateCompanies = cells.slice(1).filter(c=>c.length<=20 && !/\d/.test(c));
-        if(candidateCompanies.length>=3){ current.companies = candidateCompanies; awaitingHeader = false; }
+        if(candidateCompanies.length>=3){ current.companies = candidateCompanies; awaitingHeader = false; continue; }
+      }
+      if(headerSearchCount >= MAX_HEADER_LOOKAHEAD){
+        // No real header found nearby — this "title" was a false alarm (e.g. a chart caption). Discard it.
+        blocks.pop();
+        current = null; awaitingHeader = false;
       }
       continue;
     }
@@ -1259,17 +1302,50 @@ function renderCharts(){
       document.getElementById('il_'+def.key).innerHTML = defaultHtml;
       hideTooltip();
     });
+    // On touch devices there's no "hover" — a light touch-drag still previews values live,
+    // but tapping opens a detail view that stays open until closed, so there's no rush to read it.
     canvas.addEventListener('touchstart', (evt)=>{
       if(evt.touches && evt.touches[0]) handleHover(evt.touches[0].clientX, evt.touches[0].clientY);
     }, {passive:true});
     canvas.addEventListener('touchmove', (evt)=>{
       if(evt.touches && evt.touches[0]) handleHover(evt.touches[0].clientX, evt.touches[0].clientY);
     }, {passive:true});
-    canvas.addEventListener('touchend', ()=>{
-      setTimeout(()=>{ chart.setHover(null); document.getElementById('il_'+def.key).innerHTML = defaultHtml; hideTooltip(); }, 1200);
-    }, {passive:true});
+    canvas.addEventListener('touchend', ()=>{ hideTooltip(); }, {passive:true});
+    canvas.addEventListener('click', (evt)=>{
+      const idx = chart.nearestIndex(evt.clientX);
+      if(idx===null) return;
+      openChartModal(def, datasets, labels, idx, chart);
+    });
   });
 }
+
+function openChartModal(def, datasets, labels, idx, chart){
+  const modal = document.getElementById('chartModal');
+  const label = labels[idx];
+  document.getElementById('modalTitle').textContent = def.label;
+  document.getElementById('modalSub').textContent = `${label} — tap a different point on the chart behind this to update, or close when done`;
+  try{ document.getElementById('modalChartImg').src = chart.toBase64Image(); }catch(e){}
+
+  const rowsEl = document.getElementById('modalRows');
+  rowsEl.innerHTML = datasets.map(ds=>{
+    const v = ds.data[idx];
+    const dt = deltaText(ds.data, idx);
+    const ai = STATE.aiInsights && STATE.aiInsights[def.key] && STATE.aiInsights[def.key][ds._bankName];
+    const bakedAi = STATE.bakedInsights && STATE.bakedInsights[def.key] && STATE.bakedInsights[def.key][ds._bankName];
+    const isLatest = idx === (labels.length-1);
+    const aiText = isLatest ? (ai || bakedAi) : null;
+    return `<div class="modal-row">
+      <div class="rb-name"><span class="rb-dot" style="background:${ds.color}"></span>${ds.label}</div>
+      <div class="rb-val">${fmt(v, ds._type)}${dt ? '  ·  '+dt : ''}</div>
+      ${aiText ? `<div class="rb-ai">✦ ${aiText}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  modal.classList.add('show');
+}
+function closeChartModal(){ document.getElementById('chartModal').classList.remove('show'); }
+document.getElementById('modalCloseBtn').addEventListener('click', closeChartModal);
+document.getElementById('chartModal').addEventListener('click', (e)=>{ if(e.target.id==='chartModal') closeChartModal(); });
 
 // Returns array of "<b>Bank:</b> reason" html strings for a metric+period, from AI insights (latest period only).
 function insightBitsFor(def, idx, datasets, labels){
