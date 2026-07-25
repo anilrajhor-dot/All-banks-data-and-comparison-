@@ -1653,7 +1653,7 @@ function renderAiLog(){
     }
     async writeFile({fileName}){
       const blob = await this.getBlob();
-      downloadBlobRobustly(blob, fileName || 'document.pdf');
+      await downloadBlobRobustly(blob, fileName || 'document.pdf');
     }
   }
   window.MiniPdf = MiniPdf;
@@ -1942,7 +1942,7 @@ ${relEntries.map(r=>`<Relationship Id="${r.id}" Type="http://schemas.openxmlform
     }
     async writeFile({fileName}){
       const blob = await this.getBlob();
-      downloadBlobRobustly(blob, fileName || 'presentation.pptx');
+      await downloadBlobRobustly(blob, fileName || 'presentation.pptx');
     }
   }
   window.MiniPptx = MiniPptx;
@@ -1953,11 +1953,27 @@ ${relEntries.map(r=>`<Relationship Id="${r.id}" Type="http://schemas.openxmlform
 // mobile browsers), this explicitly navigates to the file so the browser's own native
 // download/save UI takes over — a materially different code path than a synthetic link click.
 function downloadBlobRobustly(blob, filename){
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(()=> URL.revokeObjectURL(url), 60000);
+  // Uses a base64 data: URI instead of a blob: URL. This sidesteps a real possibility with the
+  // previous approach: blob: URLs have a lifetime tied to explicit revocation, and if the user
+  // takes any time navigating a share sheet, an over-eager (or even a reasonably-timed) revoke
+  // could invalidate the reference mid-save, causing it to silently fail with no file ever
+  // actually written to disk. A data: URI has no such lifecycle — the bytes are the URL.
+  return new Promise((resolve)=>{
+    const reader = new FileReader();
+    reader.onload = function(){
+      try{
+        const a = document.createElement('a');
+        a.href = reader.result;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }catch(e){ console.error('download failed', e); }
+      resolve();
+    };
+    reader.onerror = function(){ resolve(); };
+    reader.readAsDataURL(blob);
+  });
 }
 
 async function exportDeckPDF(){
@@ -2050,7 +2066,7 @@ async function exportDeckPDF(){
 
   const filename = 'Peer_Benchmark_Board_Deck.pdf';
   const blob = await pdf.getBlob();
-  downloadBlobRobustly(blob, filename);
+  await downloadBlobRobustly(blob, filename);
   status.className='status ok'; status.textContent = `✓ Downloaded ${filename}`;
 }
 
@@ -2150,7 +2166,7 @@ async function exportDeck(){
       return;
     }
   }
-  downloadBlobRobustly(blob, filename);
+  await downloadBlobRobustly(blob, filename);
   status.className='status ok';
   status.textContent = usingFallback
     ? `✓ Downloaded ${filename} (built with the offline fallback engine — if PowerPoint has trouble opening it, reload the page for a stronger connection and export again).`
