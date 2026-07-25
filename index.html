@@ -1,1212 +1,2184 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="apple-mobile-web-app-title" content="Financial Intel" id="appTitleMeta">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>Infosys Limited — Financial Intelligence</title>
+<meta charset="UTF-8" />
+<title>Ledger — Bank Peer Intelligence</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js" crossorigin="anonymous"></script>
 <style>
-:root{
-  --ink:#0B1220; --ink-2:#111B2E; --ink-3:#182643;
-  --paper:#F4EFE2; --paper-2:#EAE2CC; --paper-line:#D8CBA8;
-  --green:#1F6F54; --green-d:#153F31;
-  --rust:#9A3E22; --rust-d:#6E2A17;
-  --gold:#C9A227; --gold-d:#8C7016;
-  --bank:#2C4A66; --bank-d:#1B2E42;
-  --text-ink:#ECE7D8; --text-paper:#20293A; --muted:#8992A6; --muted-2:#6B7280;
-}
-*{box-sizing:border-box;}
-body{margin:0;background:var(--ink);color:var(--text-ink);font-family:'IBM Plex Sans',sans-serif;}
-.mono{font-family:'IBM Plex Mono',monospace;}
-h1,h2,h3,.display{font-family:'Fraunces',serif;}
-::selection{background:var(--gold);color:#111;}
+  :root{
+    --bg:#0A0D16; --panel:#111527; --panel2:#171C33; --raise:#1D2340;
+    --accent:#C9A24B; --accent-dim:#8A7538; --pos:#3FBF7F; --neg:#E5555A;
+    --text:#EDEFF5; --muted:#8A93AC; --faint:#5B627C; --border:rgba(255,255,255,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:
+    radial-gradient(circle at 15% 0%, #141B33 0%, transparent 45%),
+    radial-gradient(circle at 85% 10%, #1A1230 0%, transparent 40%),
+    var(--bg);
+    color:var(--text); font-family:'Inter',sans-serif; min-height:100vh;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  header{padding:36px 40px 24px; border-bottom:1px solid var(--border); position:relative;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; letter-spacing:0.18em; font-size:11px; color:var(--accent); text-transform:uppercase; margin-bottom:10px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-size:32px; margin:0 0 6px; font-weight:600; letter-spacing:-0.01em;}
+  .byline{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); margin-bottom:14px;}
+  .sub{color:var(--muted); font-size:14px; max-width:680px; line-height:1.5;}
+  .ledger-line{position:absolute; left:0; right:0; bottom:-1px; height:1px;
+    background:repeating-linear-gradient(90deg, var(--border) 0 6px, transparent 6px 12px);}
+  main{max-width:1360px; margin:0 auto; padding:32px 40px 80px;}
+  .panel{background:linear-gradient(180deg, var(--panel), var(--panel2)); border:1px solid var(--border);
+    border-radius:14px; padding:24px 26px; margin-bottom:24px;}
+  .panel h2{font-family:'Space Grotesk',sans-serif; font-size:15px; margin:0 0 4px; font-weight:600;}
+  .panel .desc{color:var(--muted); font-size:12.5px; margin-bottom:16px; line-height:1.5;}
+  .row{display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end;}
+  label{display:block; font-size:11px; color:var(--muted); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.06em;}
+  input[type=text]{background:#0D1120; border:1px solid var(--border); color:var(--text); padding:10px 12px;
+    border-radius:8px; font-family:'IBM Plex Mono',monospace; font-size:13px; width:260px;}
+  textarea{width:100%; min-height:160px; background:#0D1120; border:1px solid var(--border); color:var(--text);
+    border-radius:8px; padding:14px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.6;
+    resize:vertical; margin-top:14px;}
+  input:focus, textarea:focus{outline:none; border-color:var(--accent-dim);}
+  button{cursor:pointer; border:none; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:13px;
+    padding:11px 20px; border-radius:8px; transition:transform .12s ease, opacity .12s ease;}
+  button:active{transform:scale(0.97);}
+  .btn-primary{background:var(--accent); color:#1A1608;}
+  .btn-primary:hover{opacity:0.9;}
+  .btn-primary:disabled{opacity:0.4; cursor:not-allowed;}
+  .btn-ghost{background:transparent; color:var(--text); border:1px solid var(--border);}
+  .btn-ghost:hover{border-color:var(--accent-dim);}
+  .btn-ai{background:linear-gradient(135deg,#5B8DEF,#7B5BEF); color:#fff;}
+  .btn-ai:disabled{opacity:0.5; cursor:not-allowed;}
+  .btn-row{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  .status{font-size:12px; color:var(--muted); margin-top:10px; font-family:'IBM Plex Mono',monospace; min-height:16px;}
+  .status.err{color:var(--neg);}
+  .status.ok{color:var(--pos);}
+  .toggle-group{display:flex; background:#0D1120; border:1px solid var(--border); border-radius:8px; overflow:hidden;}
+  .toggle-group button{background:transparent; color:var(--muted); border-radius:0; padding:9px 16px; font-size:12px;}
+  .toggle-group button.active{background:var(--raise); color:var(--accent);}
 
-/* ---------- Spine / header ---------- */
-.spine{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:22px 36px;border-bottom:1px solid rgba(237,234,225,0.12);
-  background:linear-gradient(180deg,var(--ink-2),var(--ink));
-}
-.spine .brand{display:flex;align-items:center;gap:14px;}
-.brand .mark{
-  width:40px;height:40px;border-radius:3px;border:1.5px solid var(--gold);
-  display:flex;align-items:center;justify-content:center;color:var(--gold);
-  font-family:'Fraunces',serif;font-weight:700;font-size:20px;transform:rotate(-2deg);
-}
-.brand h1{font-size:22px;margin:0;letter-spacing:0.3px;font-weight:600;}
-.brand .sub{font-size:12px;color:var(--muted);margin-top:2px;letter-spacing:1.5px;text-transform:uppercase;}
-.timestamp{font-size:11px;color:var(--muted);text-align:right;line-height:1.5;}
-.timestamp b{color:var(--text-ink);}
+  .chips{display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;}
+  .chip{display:flex; align-items:center; gap:8px; background:var(--raise); border:1px solid var(--border);
+    border-radius:100px; padding:7px 8px 7px 14px; font-size:12.5px;}
+  .chip .swatch{width:9px;height:9px;border-radius:50%;}
+  .chip button{background:transparent; border:none; color:var(--muted); padding:2px 6px; font-size:14px; line-height:1;}
+  .chip button:hover{color:var(--neg);}
 
-/* ---------- Upload stage ---------- */
-.stage{max-width:960px;margin:0 auto;padding:60px 28px 100px;}
-.stage-head{margin-bottom:34px;}
-.stage-head .eyebrow{color:var(--gold);font-size:12px;letter-spacing:2px;text-transform:uppercase;font-weight:600;}
-.stage-head h2{font-size:38px;margin:10px 0 8px;line-height:1.15;font-weight:600;}
-.stage-head p{color:var(--muted);max-width:560px;font-size:15px;line-height:1.6;}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  @media(max-width:900px){.grid{grid-template-columns:1fr;}}
+  .section-head{grid-column:1 / -1; margin:10px 0 -4px; display:flex; align-items:center; gap:10px;}
+  .section-head .t{font-family:'Space Grotesk',sans-serif; font-size:13px; color:var(--accent); text-transform:uppercase; letter-spacing:0.08em;}
+  .section-head .line{flex:1; height:1px; background:var(--border);}
 
-.drop{
-  border:1.5px dashed rgba(237,234,225,0.3);border-radius:6px;padding:44px 30px;
-  text-align:center;cursor:pointer;transition:.15s;background:rgba(255,255,255,0.02);
-}
-.drop:hover, .drop.drag{border-color:var(--gold);background:rgba(201,162,39,0.06);}
-.drop .icon{font-size:30px;color:var(--gold);margin-bottom:10px;}
-.drop .lead{font-size:15px;font-weight:500;}
-.drop .fine{font-size:12px;color:var(--muted);margin-top:6px;}
-input[type=file]{display:none;}
+  @keyframes fadeSlideUp{ from{opacity:0; transform:translateY(16px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes popIn{ from{opacity:0; transform:scale(0.96);} to{opacity:1; transform:scale(1);} }
 
-.filelist{margin-top:20px;display:flex;flex-direction:column;gap:8px;}
-.filerow{
-  display:flex;align-items:center;justify-content:space-between;
-  background:var(--ink-2);border:1px solid rgba(237,234,225,0.1);border-radius:4px;
-  padding:10px 14px;font-size:13px;
-}
-.filerow .name{display:flex;align-items:center;gap:10px;}
-.filerow .tag{font-size:10px;padding:2px 6px;border-radius:2px;background:var(--green-d);color:#BFE6D6;letter-spacing:0.5px;text-transform:uppercase;}
-.filerow .remove{color:var(--muted);cursor:pointer;background:none;border:none;font-size:16px;}
-.filerow .remove:hover{color:var(--rust);}
+  .chart-card{background:linear-gradient(180deg, var(--panel), var(--panel2)); border:1px solid var(--border);
+    border-radius:14px; padding:20px 20px 10px; animation:fadeSlideUp .5s cubic-bezier(.2,.7,.3,1) both;
+    transition:transform .22s ease, box-shadow .22s ease, border-color .22s ease; will-change:transform;}
+  .chart-card:hover{transform:translateY(-4px); box-shadow:0 16px 36px -14px rgba(0,0,0,0.55); border-color:var(--accent-dim);}
+  .chart-card h3{font-family:'Space Grotesk',sans-serif; font-size:14px; margin:0 0 2px; font-weight:600;}
+  .chart-card .cap{color:var(--muted); font-size:11px; margin-bottom:12px;}
+  .chart-wrap{position:relative; height:250px; cursor:crosshair;}
+  .chart-wrap canvas{border-radius:8px;}
+  .insight-line{margin-top:10px; padding-top:10px; border-top:1px dashed var(--border); font-size:11.5px;
+    color:var(--accent); min-height:16px; font-family:'IBM Plex Mono',monospace; line-height:1.5; transition:opacity .15s ease;}
 
-.actions{margin-top:26px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;}
-.btn{
-  font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:14px;border:none;
-  padding:13px 24px;border-radius:4px;cursor:pointer;transition:.15s;letter-spacing:0.2px;
-}
-.btn-primary{background:var(--gold);color:#1B1608;}
-.btn-primary:hover{background:#DDB233;}
-.btn-primary:disabled{background:#4a4636;color:#8b8770;cursor:not-allowed;}
-.btn-ghost{background:transparent;color:var(--muted);border:1px solid rgba(237,234,225,0.25);}
-.btn-ghost:hover{color:var(--text-ink);border-color:var(--text-ink);}
-.status{font-size:13px;color:var(--muted);}
-.status.err{color:#E28066;}
+  .chart-tooltip{position:fixed; pointer-events:none; z-index:9999; background:#171C33cc; backdrop-filter:blur(6px);
+    border:1px solid rgba(255,255,255,0.14); border-radius:10px; padding:10px 13px; font-family:'IBM Plex Mono',monospace;
+    font-size:11.5px; color:var(--text); box-shadow:0 16px 40px -10px rgba(0,0,0,0.65); max-width:230px;
+    opacity:0; transform:translateY(4px); transition:opacity .1s ease, transform .1s ease;}
+  .chart-tooltip.show{opacity:1; transform:translateY(0);}
+  .chart-tooltip .tt-title{color:var(--accent); font-weight:600; margin-bottom:6px; font-family:'Space Grotesk',sans-serif; font-size:12px;}
+  .chart-tooltip .tt-row{display:flex; align-items:center; gap:7px; padding:2.5px 0; white-space:nowrap;}
+  .chart-tooltip .tt-dot{width:7px; height:7px; border-radius:50%; flex-shrink:0;}
+  .chart-tooltip .tt-val{color:var(--muted); margin-left:auto; padding-left:10px;}
 
-.spinner{display:inline-block;width:13px;height:13px;border:2px solid rgba(237,234,225,.25);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin-right:8px;vertical-align:-2px;}
-@keyframes spin{to{transform:rotate(360deg);}}
+  .lb-table{width:100%; border-collapse:collapse; font-size:13px; animation:popIn .4s ease both;}
+  .lb-table tbody tr{transition:background .15s ease;}
+  .lb-table tbody tr:hover{background:rgba(255,255,255,0.03);}
+  .lb-table th, .lb-table td{padding:10px 12px; text-align:right; border-bottom:1px solid var(--border);}
+  .lb-table th:first-child, .lb-table td:first-child{text-align:left; color:var(--muted); font-size:11.5px;}
+  .lb-table th{color:var(--muted); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:0.04em;}
+  .lb-table td{font-family:'IBM Plex Mono',monospace;}
+  .cell-best{background:rgba(63,191,127,0.14); color:var(--pos); border-radius:6px; font-weight:600;}
+  .cell-worst{background:rgba(229,85,90,0.12); color:var(--neg); border-radius:6px;}
+  .lb-bar-wrap{position:relative; display:inline-block; min-width:70px;}
+  .lb-bar{position:absolute; right:2px; top:50%; transform:translateY(-50%) scaleX(0); transform-origin:right;
+    height:62%; border-radius:4px; background:rgba(201,162,75,0.16); z-index:0;
+    animation:lbGrow .6s cubic-bezier(.2,.8,.3,1) forwards;}
+  @keyframes lbGrow{ to{ transform:translateY(-50%) scaleX(1); } }
+  .cell-best .lb-bar{background:rgba(63,191,127,0.22);}
+  .cell-worst .lb-bar{background:rgba(229,85,90,0.20);}
+  .lb-val{position:relative; z-index:1; padding-right:2px;}
 
-/* ---------- Dashboard shell ---------- */
-.shell{display:none;max-width:1400px;margin:0 auto;padding:28px 28px 80px;position:relative;}
-.shell.active{display:block;}
+  .summary-list{list-style:none; padding:0; margin:0;}
+  .summary-list li{padding:9px 0 9px 22px; position:relative; font-size:13px; color:var(--text); border-bottom:1px solid var(--border); line-height:1.5;}
+  .summary-list li:last-child{border-bottom:none;}
+  .summary-list li:before{content:'◆'; position:absolute; left:0; color:var(--accent); font-size:10px; top:12px;}
 
-.persona-row{display:flex;gap:0;margin-bottom:0;border-bottom:2px solid rgba(237,234,225,0.12);}
-.ptab{
-  padding:14px 22px 12px;cursor:pointer;font-size:13px;font-weight:600;letter-spacing:0.5px;
-  text-transform:uppercase;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;
-  display:flex;align-items:center;gap:9px;transition:.15s;
-}
-.ptab .seal{width:9px;height:9px;border-radius:50%;}
-.ptab:hover{color:var(--text-ink);}
-.ptab.active{color:var(--text-ink);}
-.ptab[data-p=mgmt] .seal{background:var(--green);}
-.ptab[data-p=bank] .seal{background:var(--bank);}
-.ptab[data-p=inv] .seal{background:var(--gold);}
-.ptab[data-p=aud] .seal{background:var(--rust);}
-.ptab[data-p=mgmt].active{border-color:var(--green);}
-.ptab[data-p=bank].active{border-color:var(--bank);}
-.ptab[data-p=inv].active{border-color:var(--gold);}
-.ptab[data-p=aud].active{border-color:var(--rust);}
+  .ai-log-group{margin-bottom:14px;}
+  .ai-log-group .mtitle{font-family:'Space Grotesk',sans-serif; font-size:12.5px; color:var(--accent); margin-bottom:6px; font-weight:600;}
+  .ai-log-entry{display:flex; gap:10px; padding:6px 0; font-size:12.5px; border-bottom:1px solid var(--border); line-height:1.5;}
+  .ai-log-entry:last-child{border-bottom:none;}
+  .ai-log-entry .bk{min-width:170px; color:var(--text); font-weight:600; flex-shrink:0;}
+  .ai-log-entry .tx{color:var(--muted);}
 
-.persona-panel{display:none;padding-top:26px;}
-.persona-panel.active{display:block;}
+  input[type=file]{
+    background:#0D1120; border:1px solid var(--border); color:var(--muted); border-radius:8px;
+    padding:9px 10px; font-family:'IBM Plex Mono',monospace; font-size:11.5px; max-width:100%;
+  }
+  input[type=file]::file-selector-button, input[type=file]::-webkit-file-upload-button{
+    background:var(--accent); color:#1A1608; border:none; border-radius:6px; padding:9px 14px;
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12.5px; margin-right:12px; cursor:pointer;
+  }
 
-.summary-strip{
-  background:var(--paper);color:var(--text-paper);border-radius:6px;padding:18px 22px;
-  font-family:'Fraunces',serif;font-size:16px;line-height:1.5;margin-bottom:22px;position:relative;
-  border-left:5px solid var(--accent, var(--green));
-}
-.summary-strip .label{
-  font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;
-  color:var(--muted-2);display:block;margin-bottom:6px;
-}
+  .lib-warning{display:none; max-width:1360px; margin:20px auto 0; padding:14px 20px; border:1px solid rgba(229,85,90,0.4);
+    background:rgba(229,85,90,0.08); color:#F2A5A8; border-radius:10px; font-size:13px; line-height:1.6;}
+  .lib-warning.show{display:block;}
+  .lib-warning b{color:#fff;}
 
-.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px;}
-.kpi{
-  background:var(--ink-2);border:1px solid rgba(237,234,225,0.1);border-radius:6px;padding:16px 18px;
-  border-top:3px solid var(--accent,var(--green));
-}
-.kpi .k-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;}
-.kpi .k-val{font-family:'IBM Plex Mono',monospace;font-size:24px;font-weight:600;margin-top:6px;}
-.kpi .k-delta{font-size:12px;margin-top:4px;}
-.k-delta.up{color:#7CC9A3;}
-.k-delta.down{color:#E28066;}
-.k-delta.flat{color:var(--muted);}
+  .hidden{display:none !important;}
+  .modal-backdrop{position:fixed; inset:0; background:rgba(5,7,14,0.78); backdrop-filter:blur(3px);
+    z-index:10000; display:none; align-items:flex-start; justify-content:center; padding:24px 14px; overflow-y:auto;}
+  .modal-backdrop.show{display:flex; animation:fadeSlideUp .25s ease both;}
+  .modal-card{background:linear-gradient(180deg, var(--panel), var(--panel2)); border:1px solid var(--border);
+    border-radius:16px; padding:22px; max-width:640px; width:100%; margin-top:20px; box-shadow:0 30px 70px -20px rgba(0,0,0,0.7);}
+  .modal-head{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px;}
+  .modal-title{font-family:'Space Grotesk',sans-serif; font-size:19px; font-weight:600;}
+  .modal-sub{color:var(--accent); font-size:12px; font-family:'IBM Plex Mono',monospace; margin-top:3px;}
+  .modal-close{background:var(--raise); border:1px solid var(--border); color:var(--text); width:34px; height:34px;
+    border-radius:50%; font-size:15px; flex-shrink:0; cursor:pointer;}
+  .modal-chart-img{width:100%; border-radius:10px; margin-bottom:16px; background:#0D1120; display:block;}
+  .modal-rows{display:flex; flex-direction:column; gap:10px;}
+  .modal-row{background:#0D1120; border:1px solid var(--border); border-radius:10px; padding:12px 14px;}
+  .modal-row .rb-name{display:flex; align-items:center; gap:8px; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:14px; margin-bottom:4px;}
+  .modal-row .rb-dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .modal-row .rb-val{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted);}
+  .modal-row .rb-ai{font-size:12.5px; color:var(--accent); margin-top:6px; line-height:1.5;}
 
-.chart-grid{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;margin-bottom:16px;}
-.chart-grid.thirds{grid-template-columns:1fr 1fr;}
-.card{
-  background:var(--ink-2);border:1px solid rgba(237,234,225,0.1);border-radius:6px;padding:18px 20px 10px;
-}
-.card h3{font-size:14px;margin:0 0 2px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;}
-.card .hint{font-size:11px;color:var(--muted);margin-bottom:12px;}
-.card .chart-wrap{position:relative;height:230px;}
-
-.flag-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px;}
-.flag-list li{
-  background:rgba(154,62,34,0.12);border:1px solid rgba(154,62,34,0.35);border-radius:4px;
-  padding:10px 14px;font-size:13px;color:#F0CBBB;display:flex;gap:10px;
-}
-.flag-list li::before{content:"⚠";color:var(--rust);flex-shrink:0;}
-
-@media(max-width:860px){.chart-grid,.chart-grid.thirds{grid-template-columns:1fr;}}
-
-/* ---------- Margin note (variance drawer) ---------- */
-.note-overlay{
-  position:fixed;inset:0;background:rgba(11,18,32,0.55);display:none;z-index:40;
-}
-.note-overlay.show{display:block;}
-.note{
-  position:fixed;top:0;right:-380px;width:360px;height:100%;background:var(--paper);color:var(--text-paper);
-  z-index:41;box-shadow:-8px 0 30px rgba(0,0,0,0.4);transition:right .28s cubic-bezier(.2,.8,.2,1);
-  padding:26px 26px 26px;overflow-y:auto;
-}
-.note.show{right:0;}
-.note .pin{width:16px;height:16px;border-radius:50%;background:var(--rust);position:absolute;top:18px;left:18px;box-shadow:0 2px 4px rgba(0,0,0,0.3);}
-.note .close{position:absolute;top:18px;right:18px;background:none;border:none;font-size:20px;color:var(--muted-2);cursor:pointer;}
-.note .n-label{font-family:'IBM Plex Mono',monospace;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted-2);margin:36px 0 4px;display:block;}
-.note h4{font-family:'Fraunces',serif;font-size:22px;margin:0 0 14px;}
-.note .n-body{font-family:'Caveat',cursive;font-size:22px;line-height:1.45;color:#33261A;border-top:1px dashed var(--paper-line);padding-top:14px;}
-.note .n-nums{font-family:'IBM Plex Mono',monospace;font-size:13px;margin-top:18px;color:var(--muted-2);}
-
-/* ---------- misc ---------- */
-.topbar-actions{display:flex;gap:10px;}
-.small-btn{
-  font-size:11px;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;color:var(--muted);
-  background:none;border:1px solid rgba(237,234,225,0.2);border-radius:3px;padding:7px 12px;cursor:pointer;
-}
-.small-btn:hover{color:var(--text-ink);border-color:var(--text-ink);}
-
-@media print{
-  body{background:#fff !important;color:#20293A !important;}
-  .spine, .stage, .topbar-actions, .persona-row, .note, .note-overlay{display:none !important;}
-  .shell{display:block !important;padding:0;max-width:100%;}
-  .persona-panel{display:block !important;page-break-after:always;padding-top:6px;}
-  .persona-panel:last-child{page-break-after:auto;}
-  .persona-panel::before{content:attr(data-print-title);display:block;font-family:'Fraunces',serif;font-size:22px;font-weight:600;margin-bottom:14px;color:#20293A;}
-  .card, .kpi{background:#fff !important;border:1px solid #ccc !important;color:#20293A !important;break-inside:avoid;}
-  .kpi .k-label, .card .hint{color:#6B7280 !important;}
-  .kpi .k-val, .card h3{color:#20293A !important;}
-  .summary-strip{background:#F4EFE2 !important;color:#20293A !important;}
-  .flag-list li{background:#fdf1ec !important;color:#5c2a17 !important;}
-}
+  footer{text-align:center; color:var(--faint); font-size:11px; padding:20px; font-family:'IBM Plex Mono',monospace;}
 </style>
 </head>
 <body>
 
-<div class="spine">
-  <div class="brand">
-    <div class="mark" id="brandMark">·</div>
-    <div>
-      <h1 id="brandName">—</h1>
-      <div class="sub" id="brandSub">Statement Intelligence &amp; Variance Reasoning</div>
-    </div>
-  </div>
-  <div class="timestamp" id="tsBox">No statements analyzed yet</div>
+<header>
+  <div class="eyebrow">Bank Peer Intelligence</div>
+  <h1>Ledger</h1>
+  <div class="byline">by Anil Sharma, Former General Manager, Central Bank of India</div>
+  <div class="sub">Add each bank's results table one at a time, or paste your whole peer set in a single box. Ledger lines them up period-by-period, charts every parameter side by side, ranks the peer set, and explains — on hover and in an exportable board deck — who's leading, who's lagging, and why.</div>
+  <div class="ledger-line"></div>
+</header>
+
+<div class="lib-warning" id="libWarning">
+  <b>Some required components didn't load.</b> <span id="libWarningDetail"></span>
+  This is usually a connectivity hiccup — try reloading the page. If it persists, tell Claude the exact message here and it can adjust the app.
 </div>
 
-<!-- UPLOAD STAGE -->
-<div class="stage" id="stage">
-  <div class="stage-head">
-    <div class="eyebrow">Upload · Extract · Interrogate</div>
-    <h2>Turn any set of financial statements into four working dashboards.</h2>
-    <p>Drop in income statements, balance sheets, cash flow statements or trial balances — as Excel, CSV or PDF. This reconciles them into one model, then builds a dedicated view for management, bankers, investors and auditors. Click any bar or line to see why it moved.</p>
+<main>
+
+  <div class="panel">
+    <h2>1 · Add banks to the comparison set</h2>
+    <div class="row" style="justify-content:space-between; align-items:center;">
+      <div class="desc" style="margin-bottom:0;">Add banks one at a time, or paste all of them together in one box.</div>
+      <div class="toggle-group" id="addModeToggle">
+        <button data-add-mode="single" class="active">One by one</button>
+        <button data-add-mode="bulk">All at once</button>
+        <button data-add-mode="wide">Peer report (wide)</button>
+      </div>
+    </div>
+
+    <div id="singleAddBlock">
+      <div class="desc">Paste one bank's table (tab-separated works best — first row = period labels like Q1FY27, FY26 …; first column = metric name), name it, click "Add bank". Repeat for each bank.</div>
+      <div class="row">
+        <div>
+          <label>Bank / company name</label>
+          <input type="text" id="bankName" placeholder="e.g. Suryoday Small Finance Bank" />
+        </div>
+        <button class="btn-ghost" id="loadSample">Load sample (Suryoday Q1FY27)</button>
+        <button class="btn-ghost" id="singlePasteBtn">📋 Paste from clipboard</button>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <div>
+          <label>Or import a file directly (.csv, .tsv, .txt, .xlsx, .xls, .pdf)</label>
+          <input type="file" id="singleFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf" />
+        </div>
+      </div>
+      <div class="desc" style="margin:8px 0 0;">Paste directly below, or import a file — either way you'll be able to check/edit it before adding.</div>
+      <textarea id="rawData" placeholder="Metric&#9;Q1FY27&#9;FY26&#9;Q4FY26...
+Net Interest Margin (%)&#9;7.20&#9;7.30&#9;7.90...
+% of Gross NPAs&#9;6.60&#9;6.55&#9;6.55..."></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" id="addBankBtn">+ Add bank</button>
+      </div>
+    </div>
+
+    <div id="bulkAddBlock" class="hidden">
+      <div class="desc">Paste every bank's table into one box. Start each bank with a line like <code class="mono">### Bank Name</code>, followed by that bank's table (same tab-separated format). Repeat for each bank below it.</div>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn-ghost" id="loadBulkSample">Load sample (2 banks)</button>
+        <button class="btn-ghost" id="bulkPasteBtn">📋 Paste from clipboard</button>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <div>
+          <label>Or import file(s) directly (.csv, .tsv, .txt, .xlsx, .xls, .pdf) — pick multiple, one per bank</label>
+          <input type="file" id="bulkFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf" multiple />
+        </div>
+      </div>
+      <div class="desc" style="margin:4px 0 0;">Selecting files appends each one below, tagged with a <code class="mono">### filename</code> marker — one file per bank works best (e.g. SuryodayResults.xlsx, AUBankResults.csv). Rename the <code class="mono">### ...</code> lines below if you want cleaner bank names.</div>
+      <textarea id="bulkData" style="min-height:260px;" placeholder="### Suryoday Small Finance Bank
+Metric&#9;Q1FY27&#9;FY26&#9;Q4FY26...
+Net Interest Margin (%)&#9;7.20&#9;7.30&#9;7.90...
+
+### AU Small Finance Bank
+Metric&#9;Q1FY27&#9;FY26&#9;Q4FY26...
+Net Interest Margin (%)&#9;5.80&#9;6.10&#9;..."></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" id="addBulkBtn">+ Add all banks</button>
+      </div>
+    </div>
+
+    <div id="wideAddBlock" class="hidden">
+      <div class="desc">For "many companies compared at one point in time" reports (columns = company names, e.g. PNB, Union, BOI... rather than quarters). Paste or import one or more such reports — Ledger finds every period-labeled table inside (e.g. "Cost Ratios Analysis 9MFY26", "Key Fundamentals FY24") and transposes each company into its own proper multi-period bank entry. If a bank with the same name already exists in your list, its data is merged in rather than duplicated.</div>
+      <div class="btn-row" style="margin-top:0;">
+        <button class="btn-ghost" id="loadWideSample">Load sample (PSU peer report)</button>
+        <button class="btn-ghost" id="widePasteBtn">📋 Paste from clipboard</button>
+      </div>
+      <div class="row" style="margin-top:12px;">
+        <div>
+          <label>Or import file(s) directly (.csv, .tsv, .txt, .xlsx, .xls, .pdf) — one or more editions of the same report</label>
+          <input type="file" id="wideFileInput" accept=".csv,.tsv,.txt,.xlsx,.xls,.pdf" multiple />
+        </div>
+      </div>
+      <textarea id="wideData" style="min-height:220px;" placeholder="Particulars (INR in Crores)&#9;PNB&#9;Union&#9;BOI&#9;CBI&#9;IOB...
+Cost Ratios Analysis&#9;9MFY26
+Net Interest Margin (%)&#9;2.60&#9;2.72&#9;2.51&#9;3.00&#9;3.19...
+Return on Assets&#9;0.83&#9;1.20&#9;0.90&#9;1.02&#9;1.20..."></textarea>
+      <div class="btn-row">
+        <button class="btn-primary" id="addWideBtn">+ Add peer report banks</button>
+      </div>
+    </div>
+
+    <div class="chips" id="bankChips"></div>
+    <div class="status" id="statusLine"></div>
   </div>
 
-  <div class="drop" id="drop">
-    <div class="icon">⌘</div>
-    <div class="lead">Drag files here, or click to browse</div>
-    <div class="fine">.xlsx · .xls · .csv · .pdf — multiple files supported</div>
-    <input type="file" id="fileInput" multiple accept=".xlsx,.xls,.csv,.pdf">
+  <div class="panel" id="buildPanel" style="display:none;">
+    <div class="row" style="justify-content:space-between;">
+      <div class="row" style="align-items:center;">
+        <button class="btn-primary" id="buildBtn">Build comparison dashboard</button>
+        <button class="btn-ai" id="aiBtn" disabled>✦ Generate AI peer insights</button>
+        <button class="btn-ghost hidden" id="exportBtn">⬇ Export board deck (.pptx)</button>
+        <button class="btn-ghost hidden" id="exportPdfBtn">⬇ Export board deck (.pdf)</button>
+      </div>
+      <div class="toggle-group" id="periodToggle">
+        <button data-mode="quarterly" class="active">Quarterly</button>
+        <button data-mode="annual">Annual</button>
+      </div>
+    </div>
   </div>
 
-  <div class="filelist" id="fileList"></div>
+  <div id="dashboard" class="hidden">
+    <div class="panel" id="summaryPanel" style="display:none;">
+      <h2>Peer takeaways</h2>
+      <div class="desc" id="dashSub"></div>
+      <ul class="summary-list" id="summaryList"></ul>
+    </div>
 
-  <div class="actions">
-    <button class="btn btn-primary" id="analyzeBtn" disabled>Build dashboards</button>
-    <button class="btn btn-ghost" id="infosysBtn">Load Infosys Q1 FY27 (verified figures)</button>
-    <button class="btn btn-ghost" id="demoBtn">Use fictional sample company instead</button>
-    <span class="status" id="statusText"></span>
+    <div class="panel" id="aiLogPanel" style="display:none;">
+      <h2>AI Insight Log <span style="color:var(--muted); font-weight:400; font-size:11px;">— every reasoning note, captured for the record</span></h2>
+      <div class="desc">This is the same commentary shown on hover across the charts below and included in the exported deck, listed here in full so nothing is lost if you don't hover every point.</div>
+      <div id="aiLogList"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Peer Leaderboard</h2>
+      <div class="desc">Latest common period. Green = best in class, red = weakest, on that metric.</div>
+      <div style="overflow-x:auto;"><table class="lb-table" id="lbTable"></table></div>
+    </div>
+
+    <div class="grid" id="chartGrid"></div>
+  </div>
+
+</main>
+
+<div class="modal-backdrop" id="chartModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div>
+        <div class="modal-title" id="modalTitle">Metric</div>
+        <div class="modal-sub" id="modalSub">Period</div>
+      </div>
+      <button class="modal-close" id="modalCloseBtn">✕</button>
+    </div>
+    <img id="modalChartImg" class="modal-chart-img" />
+    <div id="modalRows" class="modal-rows"></div>
   </div>
 </div>
 
-<!-- DASHBOARD SHELL -->
-<div class="shell" id="shell">
-  <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px;">
-    <div>
-      <div class="eyebrow" style="color:var(--gold);font-size:11px;letter-spacing:2px;text-transform:uppercase;font-weight:600;" id="coName">—</div>
-      <h2 class="display" style="margin:4px 0 0;font-size:26px;" id="coPeriods">—</h2>
-      <div id="sourceBadge" style="font-size:11px;color:var(--muted);margin-top:6px;"></div>
-    </div>
-    <div class="topbar-actions">
-      <button class="small-btn" id="exportXlsxBtn">⬇ Export data (.xlsx)</button>
-      <button class="small-btn" id="exportPdfBtn">⬇ Download dashboard (PDF)</button>
-      <button class="small-btn" id="backBtn">← Clear data &amp; upload new statements</button>
-    </div>
-  </div>
-
-  <div class="persona-row" id="personaRow">
-    <div class="ptab active" data-p="mgmt"><span class="seal"></span> Management</div>
-    <div class="ptab" data-p="bank"><span class="seal"></span> Bankers</div>
-    <div class="ptab" data-p="inv"><span class="seal"></span> Investors</div>
-    <div class="ptab" data-p="aud"><span class="seal"></span> Auditors</div>
-  </div>
-
-  <!-- MANAGEMENT -->
-  <div class="persona-panel active" id="panel-mgmt" data-print-title="Management view">
-    <div class="summary-strip" style="--accent:var(--green);"><span class="label">Reading for management</span><span id="sum-mgmt"></span></div>
-    <div class="kpi-grid" id="kpi-mgmt" style="--accent:var(--green);"></div>
-    <div class="chart-grid">
-      <div class="card"><h3>Revenue vs. operating expense</h3><div class="hint">Click a bar for the variance reason</div><div class="chart-wrap"><canvas id="c-mgmt-1"></canvas></div></div>
-      <div class="card"><h3>Margin trend</h3><div class="hint">Gross vs. net margin, %</div><div class="chart-wrap"><canvas id="c-mgmt-2"></canvas></div></div>
-    </div>
-    <div class="chart-grid thirds">
-      <div class="card"><h3>EBITDA trend</h3><div class="hint">Click a point for the driver</div><div class="chart-wrap"><canvas id="c-mgmt-3"></canvas></div></div>
-      <div class="card"><h3>Cost structure, latest period</h3><div class="hint">COGS vs. operating expense split</div><div class="chart-wrap"><canvas id="c-mgmt-4"></canvas></div></div>
-    </div>
-  </div>
-
-  <!-- BANKERS -->
-  <div class="persona-panel" id="panel-bank" data-print-title="Bankers view">
-    <div class="summary-strip" style="--accent:var(--bank);"><span class="label">Reading for lenders</span><span id="sum-bank"></span></div>
-    <div class="kpi-grid" id="kpi-bank" style="--accent:var(--bank);"></div>
-    <div class="chart-grid">
-      <div class="card"><h3>Liquidity: current &amp; quick ratio</h3><div class="hint">Click a point for the driver</div><div class="chart-wrap"><canvas id="c-bank-1"></canvas></div></div>
-      <div class="card"><h3>Leverage: debt / equity</h3><div class="hint">Click a bar for the variance reason</div><div class="chart-wrap"><canvas id="c-bank-2"></canvas></div></div>
-    </div>
-    <div class="chart-grid thirds">
-      <div class="card"><h3>Cash flow composition</h3><div class="hint">Operating / investing / financing</div><div class="chart-wrap"><canvas id="c-bank-3"></canvas></div></div>
-      <div class="card"><h3>Interest coverage</h3><div class="hint">EBITDA ÷ interest burden, click for reason</div><div class="chart-wrap"><canvas id="c-bank-4"></canvas></div></div>
-    </div>
-  </div>
-
-  <!-- INVESTORS -->
-  <div class="persona-panel" id="panel-inv" data-print-title="Investors view">
-    <div class="summary-strip" style="--accent:var(--gold);"><span class="label">Reading for investors</span><span id="sum-inv"></span></div>
-    <div class="kpi-grid" id="kpi-inv" style="--accent:var(--gold);"></div>
-    <div class="chart-grid">
-      <div class="card"><h3>Net income trend</h3><div class="hint">Click a bar for the variance reason</div><div class="chart-wrap"><canvas id="c-inv-1"></canvas></div></div>
-      <div class="card"><h3>Return on equity &amp; assets</h3><div class="hint">Click a point for the driver</div><div class="chart-wrap"><canvas id="c-inv-2"></canvas></div></div>
-    </div>
-    <div class="chart-grid thirds">
-      <div class="card"><h3>Revenue growth, YoY %</h3><div class="hint">Click a bar for the reason</div><div class="chart-wrap"><canvas id="c-inv-3"></canvas></div></div>
-      <div class="card"><h3>Free cash flow trend</h3><div class="hint">Click a point for the driver</div><div class="chart-wrap"><canvas id="c-inv-4"></canvas></div></div>
-    </div>
-  </div>
-
-  <!-- AUDITORS -->
-  <div class="persona-panel" id="panel-aud" data-print-title="Auditors view">
-    <div class="summary-strip" style="--accent:var(--rust);"><span class="label">Reading for auditors</span><span id="sum-aud"></span></div>
-    <div class="kpi-grid" id="kpi-aud" style="--accent:var(--rust);"></div>
-    <div class="chart-grid">
-      <div class="card"><h3>Balance check: assets vs. liabilities + equity</h3><div class="hint">Bars should match each period — click for detail</div><div class="chart-wrap"><canvas id="c-aud-1"></canvas></div></div>
-      <div class="card"><h3>Margin volatility</h3><div class="hint">Period-over-period swing in gross margin, pts</div><div class="chart-wrap"><canvas id="c-aud-2"></canvas></div></div>
-    </div>
-    <div class="card" style="margin-bottom:16px;">
-      <h3>Flags for follow-up</h3><div class="hint">Items worth a closer look this cycle</div>
-      <ul class="flag-list" id="flagList"></ul>
-    </div>
-  </div>
-</div>
-
-<!-- MARGIN NOTE DRAWER -->
-<div class="note-overlay" id="noteOverlay"></div>
-<div class="note" id="note">
-  <div class="pin"></div>
-  <button class="close" id="noteClose">×</button>
-  <span class="n-label" id="noteLabel">Variance note</span>
-  <h4 id="noteTitle">—</h4>
-  <div class="n-body" id="noteBody">—</div>
-  <div class="n-nums" id="noteNums"></div>
-</div>
-
-<div style="text-align:center;padding:18px 20px 30px;font-size:11px;color:var(--muted);letter-spacing:0.3px;">
-  Developed by <span style="color:var(--text-ink);font-weight:600;">Anil Sharma</span> — Former General Manager, Central Bank of India
-</div>
+<footer>Application developed by Anil Sharma, Former General Manager, Central Bank of India.<br>AI insights are generated on demand from the numbers you provide.</footer>
 
 <script>
-/* ============================= STATE ============================= */
-let uploadedFiles = [];   // {name, kind, text}
-let financials = null;    // parsed model
-let charts = {};
-const ACCENTS = {mgmt:'#1F6F54', bank:'#2C4A66', inv:'#C9A227', aud:'#9A3E22'};
-
-/* ============================= FILE HANDLING ============================= */
-const drop = document.getElementById('drop');
-const fileInput = document.getElementById('fileInput');
-const fileListEl = document.getElementById('fileList');
-const analyzeBtn = document.getElementById('analyzeBtn');
-const statusText = document.getElementById('statusText');
-
-drop.addEventListener('click', ()=>fileInput.click());
-['dragover','dragenter'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('drag');}));
-['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('drag');}));
-drop.addEventListener('drop', e=>{ handleFiles(e.dataTransfer.files); });
-fileInput.addEventListener('change', e=>handleFiles(e.target.files));
-
-function extOf(name){ return name.split('.').pop().toLowerCase(); }
-
-async function handleFiles(fileArr){
-  for(const f of Array.from(fileArr)){
-    const ext = extOf(f.name);
-    if(!['xlsx','xls','csv','pdf'].includes(ext)){ continue; }
-    const entry = {name:f.name, kind:ext, text:'', status:'reading'};
-    uploadedFiles.push(entry);
-    renderFileList();
-    try{
-      if(ext==='csv'){
-        entry.text = await readAsText(f);
-      } else if(ext==='xlsx'||ext==='xls'){
-        const buf = await readAsArrayBuffer(f);
-        const wb = XLSX.read(buf, {type:'array'});
-        let out = '';
-        wb.SheetNames.forEach(name=>{
-          out += `\n--- sheet: ${name} ---\n`;
-          out += XLSX.utils.sheet_to_csv(wb.Sheets[name]);
-        });
-        entry.text = out;
-      } else if(ext==='pdf'){
-        const buf = await readAsArrayBuffer(f);
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        const doc = await pdfjsLib.getDocument({data:buf}).promise;
-        let out = '';
-        const maxPages = Math.min(doc.numPages, 25);
-        for(let i=1;i<=maxPages;i++){
-          const page = await doc.getPage(i);
-          const tc = await page.getTextContent();
-          out += tc.items.map(it=>it.str).join(' ') + '\n';
-        }
-        entry.text = out;
-      }
-      entry.status = 'ready';
-    }catch(err){
-      entry.status = 'error';
-      entry.error = err.message;
-    }
-    renderFileList();
+// ---------- Library availability check (runs first). Charts and PPT export are self-contained; this only checks XLSX/PDF.js ----------
+function checkLibraries(){
+  const missing = [];
+  if(typeof XLSX === 'undefined') missing.push('SheetJS (.xlsx import)');
+  if(typeof pdfjsLib === 'undefined') missing.push('PDF.js (.pdf import)');
+  if(typeof PptxGenJS === 'undefined') missing.push('PptxGenJS (.pptx export will use a basic offline fallback instead)');
+  if(missing.length){
+    const w = document.getElementById('libWarning');
+    document.getElementById('libWarningDetail').textContent = `Missing: ${missing.join(', ')}.`;
+    w.classList.add('show');
   }
+  return missing;
+}
+const MISSING_LIBS = checkLibraries();
+if(typeof pdfjsLib !== 'undefined'){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.6.347/pdf.worker.min.js';
 }
 
-function readAsText(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsText(f); }); }
-function readAsArrayBuffer(f){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsArrayBuffer(f); }); }
+window.addEventListener('error', (e)=>{
+  // Surfaces genuine runtime errors in the status line instead of failing silently.
+  const status = document.getElementById('statusLine');
+  if(status && !status.textContent.includes('Missing:')){
+    status.className = 'status err';
+    status.textContent = 'Something went wrong: ' + (e.message || 'unknown error') + '. Try reloading the page.';
+  }
+});
 
-function renderFileList(){
-  fileListEl.innerHTML = '';
-  uploadedFiles.forEach((f,idx)=>{
-    const row = document.createElement('div');
-    row.className = 'filerow';
-    const tagText = f.status==='reading' ? 'reading…' : f.status==='error' ? 'error' : f.kind.toUpperCase();
-    row.innerHTML = `<div class="name"><span class="tag">${tagText}</span> ${f.name}</div><button class="remove" data-idx="${idx}">×</button>`;
-    fileListEl.appendChild(row);
+
+const METRIC_DEFS = [
+  {key:'income', label:'Total Income', match:['total income'], type:'currency', section:'Profitability'},
+  {key:'nii', label:'Net Interest Income', match:['net interest income'], type:'currency', section:'Profitability'},
+  {key:'pat', label:'Net Profit (PAT)', match:['net profit'], type:'currency', section:'Profitability'},
+  {key:'nim', label:'Net Interest Margin', match:['net interest margin'], type:'percent', section:'Margins & Efficiency'},
+  {key:'cir', label:'Cost to Income Ratio', match:['cost to income ratio'], type:'percent', section:'Margins & Efficiency'},
+  {key:'gnpa', label:'Gross NPA %', match:['% of gross npas','gross npa %'], type:'percent', section:'Asset Quality'},
+  {key:'nnpa', label:'Net NPA %', match:['% of net npas','net npa %'], type:'percent', section:'Asset Quality'},
+  {key:'pcr', label:'Provision Coverage (PCR)', match:['pcr without tech w/off (%)','pcr'], type:'percent', section:'Asset Quality'},
+  {key:'advances', label:'Net Advances', match:['net advances'], type:'currency', exact:true, section:'Business Growth'},
+  {key:'deposits', label:'Deposits', match:['deposits'], type:'currency', exact:true, section:'Business Growth'},
+  {key:'advgrowth', label:'Advances Growth YoY', match:['net advances growth yoy','- net advances growth yoy'], type:'percent', section:'Business Growth'},
+  {key:'depgrowth', label:'Deposit Growth YoY', match:['deposit growth yoy','- deposit growth yoy'], type:'percent', section:'Business Growth'},
+  {key:'casa', label:'CASA Ratio', match:['casa ratio'], type:'percent', section:'Business Growth'},
+  {key:'roa', label:'Return on Assets', match:['return on assets'], type:'percent', section:'Returns'},
+  {key:'roe', label:'Return on Equity', match:['roae','return on equity'], type:'percent', section:'Returns'},
+];
+const AI_METRICS = ['pat','nim','cir','gnpa','casa','roa','advgrowth','depgrowth']; // curated to keep AI response compact
+const LB_METRICS = ['pat','nim','cir','gnpa','casa','roa']; // leaderboard columns
+const PALETTE = ['#C9A24B','#5B8DEF','#3FBF7F','#E5555A','#7B5BEF','#4FC3D9','#F2A65A','#9AA5C9'];
+
+let STATE = { banks: [], mode:'quarterly', aiInsights:null, aiSummary:null, bakedInsights:null, bakedSummary:null, charts:{} };
+
+// Live-fetched insights take priority per bank/metric, but baked-in (pre-written) insights
+// persist underneath so a failed live call — or rebuilding the dashboard — never erases them.
+function effectiveInsights(){
+  if(!STATE.bakedInsights && !STATE.aiInsights) return null;
+  const merged = {};
+  const baked = STATE.bakedInsights || {};
+  const live = STATE.aiInsights || {};
+  new Set([...Object.keys(baked), ...Object.keys(live)]).forEach(metricKey=>{
+    merged[metricKey] = { ...(baked[metricKey]||{}), ...(live[metricKey]||{}) };
   });
-  fileListEl.querySelectorAll('.remove').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ uploadedFiles.splice(+btn.dataset.idx,1); renderFileList(); updateAnalyzeBtn(); });
-  });
-  updateAnalyzeBtn();
+  return merged;
 }
-function updateAnalyzeBtn(){
-  const ready = uploadedFiles.filter(f=>f.status==='ready');
-  analyzeBtn.disabled = ready.length===0;
+function effectiveSummary(){
+  if(STATE.aiSummary && STATE.aiSummary.length) return STATE.aiSummary;
+  if(STATE.bakedSummary && STATE.bakedSummary.length) return STATE.bakedSummary;
+  return null;
 }
 
-/* ============================= CLAUDE EXTRACTION CALL ============================= */
-const SCHEMA_PROMPT = `You are a financial-statement analyst. You will receive raw extracted text/CSV from one or more uploaded financial documents (income statement, balance sheet, cash flow, trial balance, or mixed). Reconcile them into ONE compact JSON model, up to the 4 most recent periods you can find (fewer if that's all there is). Compute any ratio you can derive even if not explicit in the source. If a figure truly cannot be found or derived, use null. Keep all arrays the SAME LENGTH as the "p" periods array, ordered oldest to newest.
-
-Respond with ONLY raw JSON (no markdown fences, no commentary) matching EXACTLY this shape:
-{
- "co": "company name or best guess",
- "cur": "currency code, e.g. USD",
- "p": ["period label", "..."],
- "is": {"rev":[],"cogs":[],"gp":[],"opex":[],"ebitda":[],"ni":[]},
- "bs": {"ca":[],"cl":[],"ta":[],"tl":[],"te":[],"cash":[],"inv":[],"debt":[]},
- "cf": {"ocf":[],"icf":[],"fcf":[],"fcfree":[]},
- "r": {"gm":[],"nm":[],"cr":[],"qr":[],"de":[],"roe":[],"roa":[],"ic":[]},
- "v": {"rev":[],"ni":[],"gm":[],"cr":[],"de":[],"roe":[],"ocf":[]},
- "flags": [],
- "sum": {"mgmt":"","bank":"","inv":"","aud":""}
+// ---------- Parsing ----------
+function splitLine(l){ return l.includes('\t') ? l.split('\t') : l.split(/\s{2,}/); }
+function parseData(raw){
+  const lines = raw.split('\n').map(l=>l.replace(/\r$/,'')).filter(l=>l.trim().length>0);
+  if(lines.length<2) return null;
+  const header = splitLine(lines[0]).map(s=>s.trim());
+  const periods = header.slice(1).filter(p=>p.length>0);
+  const metrics = {};
+  for(let i=1;i<lines.length;i++){
+    const cells = splitLine(lines[i]).map(s=>s.trim());
+    if(cells.length<2) continue;
+    const name = cells[0];
+    if(!name) continue;
+    const values = cells.slice(1, periods.length+1).map(v=>{
+      let c = (v||'').replace(/,/g,'').replace(/%/g,'').trim();
+      if(c==='' || c==='-' || c.toLowerCase()==='na') return null;
+      const num = parseFloat(c);
+      return isNaN(num) ? null : num;
+    });
+    metrics[name] = values;
+  }
+  return {periods, metrics};
 }
-Field meanings: is=income statement (rev revenue, cogs, gp gross profit, opex operating expense, ebitda, ni net income). bs=balance sheet (ca current assets, cl current liabilities, ta total assets, tl total liabilities, te total equity, cash, inv inventory, debt total debt). cf=cash flow (ocf operating, icf investing, fcf financing, fcfree free cash flow = ocf - capex if derivable else ocf). r=ratios (gm gross margin %, nm net margin %, cr current ratio, qr quick ratio, de debt-to-equity, roe %, roa %, ic interest coverage). v=variance notes: for EACH metric, one short string per period explaining the period-over-period change in plain language (max 16 words), citing a likely driver from the source text if mentioned (e.g. one-time charge, price increase, new facility, FX, write-down); the FIRST entry of each array should be "Base period — no prior comparison". If the source gives no explicit reason, infer the most likely driver from the numbers themselves and prefix with "Likely:". flags=3-6 short auditor-relevant anomalies (unusual swings, balance mismatches, negative equity, related-party hints, going-concern language, round-number irregularities). sum=one 2-sentence plain-English narrative per audience (mgmt, bank, inv, aud) synthesizing the story across all periods. Keep every string concise — this must fit in a small response.`;
-
-async function callClaude(userText){
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      system: SCHEMA_PROMPT,
-      messages: [{role:"user", content: userText}]
-    })
-  });
-  const data = await resp.json();
-  const text = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('\n');
-  let cleaned = text.replace(/```json/gi,'').replace(/```/g,'').trim();
-  const first = cleaned.indexOf('{'); const last = cleaned.lastIndexOf('}');
-  if(first>=0 && last>first) cleaned = cleaned.slice(first,last+1);
-  return JSON.parse(cleaned);
+function findMetricRow(metrics, def){
+  const names = Object.keys(metrics);
+  const lower = names.map(n=>n.toLowerCase().trim());
+  for(const p of def.match){ const idx = lower.findIndex(n=>n===p); if(idx>=0) return metrics[names[idx]]; }
+  if(!def.exact){ for(const p of def.match){ const idx = lower.findIndex(n=>n.includes(p)); if(idx>=0) return metrics[names[idx]]; } }
+  return null;
+}
+function resolveMetrics(metrics){
+  const out = {};
+  METRIC_DEFS.forEach(def=>{ const row = findMetricRow(metrics, def); if(row) out[def.key]=row; });
+  return out;
 }
 
-document.getElementById('analyzeBtn').addEventListener('click', analyze);
-document.getElementById('demoBtn').addEventListener('click', ()=>{ financials = demoData(); enterDashboard(); });
-document.getElementById('infosysBtn').addEventListener('click', ()=>{ financials = infosysData(); financials._source = 'ai'; enterDashboard(); });
-
-document.getElementById('backBtn').addEventListener('click', clearData);
-document.getElementById('exportPdfBtn').addEventListener('click', exportPdfFile);
-
-const PERSONA_META = {
-  mgmt:{ label:'Management', accent:[31,111,84], chartIds:['c-mgmt-1','c-mgmt-2','c-mgmt-3','c-mgmt-4'], sumKey:'mgmt' },
-  bank:{ label:'Bankers', accent:[44,74,102], chartIds:['c-bank-1','c-bank-2','c-bank-3','c-bank-4'], sumKey:'bank' },
-  inv:{ label:'Investors', accent:[201,162,39], chartIds:['c-inv-1','c-inv-2','c-inv-3','c-inv-4'], sumKey:'inv' },
-  aud:{ label:'Auditors', accent:[154,62,34], chartIds:['c-aud-1','c-aud-2'], sumKey:'aud' }
+// ---------- Wide-format "many companies at one point in time" comparative report parser ----------
+const COMPANY_ABBR = {
+  'sbi':'State Bank of India', 'pnb':'Punjab National Bank', 'bob':'Bank of Baroda', 'cbk':'Canara Bank',
+  'union':'Union Bank of India', 'boi':'Bank of India', 'inbk':'Indian Bank', 'cbi':'Central Bank of India',
+  'iob':'Indian Overseas Bank', 'bom':'Bank of Maharashtra', 'uco':'UCO Bank', 'pjsb':'Punjab & Sind Bank',
 };
+function expandCompanyName(abbr){
+  const key = abbr.toLowerCase().replace(/[^a-z0-9]/g,'');
+  return COMPANY_ABBR[key] || abbr;
+}
 
-async function exportPdfFile(){
-  if(!financials || !window.jspdf){ return; }
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF({ unit:'mm', format:'a4' });
-  const pageW = 210, margin = 16, contentW = pageW - margin*2;
-  const coFull = financials.co || 'Uploaded company';
-  const coShort = shortCompanyName(coFull);
-  const periodLine = financials.pBS
-    ? `P&L/cash flow: ${(financials.p||[]).join(' -> ')}   |   Balance sheet: ${(financials.pBS||[]).join(' -> ')}`
-    : (financials.p||[]).join('   |   ');
+const WIDE_PERIOD_TOKEN_RE = /\b(Q[1-4]FY\d{2,4}|H[1-2]FY\d{2,4}|\d{1,2}MFY\d{2,4}|FY\d{2,4})\b/i;
 
-  const originalActive = document.querySelector('.ptab.active')?.dataset.p || 'mgmt';
-  const btn = document.getElementById('exportPdfBtn');
-  const originalBtnText = btn.textContent;
-  btn.textContent = 'Building PDF…'; btn.disabled = true;
+function parseWideReport(text){
+  const lines = text.split('\n').map(l=>l.replace(/\r$/,''));
+  const blocks = [];
+  let current = null;
+  let awaitingHeader = false;
+  let headerSearchCount = 0;
+  const MAX_HEADER_LOOKAHEAD = 5;
 
-  const nextFrame = ()=> new Promise(r=> requestAnimationFrame(()=> requestAnimationFrame(r)));
+  for(let i=0;i<lines.length;i++){
+    const line = lines[i];
+    if(!line.trim()) continue;
+    const cells = splitLine(line).map(c=>c.trim()).filter(Boolean);
 
-  let first = true;
-  for(const key of Object.keys(PERSONA_META)){
-    const meta = PERSONA_META[key];
+    const m = line.match(WIDE_PERIOD_TOKEN_RE);
+    const looksLikeTitle = m && cells.length<=4 && !/\d,\d\d\d/.test(line);
+    if(looksLikeTitle){
+      current = { period: m[0].replace(/\s+/g,'').toUpperCase(), companies:null, rows:{} };
+      blocks.push(current);
+      awaitingHeader = true;
+      headerSearchCount = 0;
+      continue;
+    }
+    if(awaitingHeader){
+      headerSearchCount++;
+      // Real header rows in these reports always start with "Particulars" — this is the strongest
+      // signal that distinguishes an actual comparison table from stray chart/legend text.
+      if(cells.length>=4 && /particulars/i.test(cells[0])){
+        const candidateCompanies = cells.slice(1).filter(c=>c.length<=20 && !/\d/.test(c));
+        if(candidateCompanies.length>=3){ current.companies = candidateCompanies; awaitingHeader = false; continue; }
+      }
+      if(headerSearchCount >= MAX_HEADER_LOOKAHEAD){
+        // No real header found nearby — this "title" was a false alarm (e.g. a chart caption). Discard it.
+        blocks.pop();
+        current = null; awaitingHeader = false;
+      }
+      continue;
+    }
+    if(current && current.companies){
+      if(cells.length>=2){
+        const name = cells[0];
+        if(/^(income statement|breakup of advances|cost ratios as a)/i.test(name)) continue;
+        const vals = cells.slice(1, 1+current.companies.length).map(v=>{
+          let c=(v||'').replace(/,/g,'').replace(/%/g,'').trim();
+          if(c===''||c==='-') return null;
+          const num = parseFloat(c);
+          return isNaN(num) ? null : num;
+        });
+        if(vals.filter(v=>v!==null).length >= Math.ceil(current.companies.length*0.5)) current.rows[name] = vals;
+      }
+    }
+  }
+  return blocks.filter(b=>b.companies && Object.keys(b.rows).length>0);
+}
 
-    // Show this persona's panel so its charts have real dimensions, then force them to redraw.
-    showPersona(key);
-    meta.chartIds.forEach(id=>{ if(charts[id]) charts[id].resize(); });
-    await nextFrame();
+function transposeWideBlocks(blocks){
+  const allPeriods = [...new Set(blocks.map(b=>b.period))];
+  const companies = new Set();
+  blocks.forEach(b=>b.companies.forEach(c=>companies.add(c)));
+  const result = {};
+  companies.forEach(co=>{ result[co] = {periods:allPeriods.slice(), metrics:{}}; });
+  blocks.forEach(b=>{
+    const pIdx = allPeriods.indexOf(b.period);
+    Object.entries(b.rows).forEach(([metricName, vals])=>{
+      b.companies.forEach((co,ci)=>{
+        if(!result[co].metrics[metricName]) result[co].metrics[metricName] = new Array(allPeriods.length).fill(null);
+        if(vals[ci]!==null && vals[ci]!==undefined) result[co].metrics[metricName][pIdx] = vals[ci];
+      });
+    });
+  });
+  return {allPeriods, companies:[...companies], result};
+}
 
-    if(!first) doc.addPage(); first = false;
-    let y = margin;
+// Adds a bank, or merges new periods/metrics into an existing bank of the same name rather than duplicating it.
+function mergeOrAddBank(name, newPeriods, newMetrics){
+  let bank = STATE.banks.find(b=>b.name.toLowerCase()===name.toLowerCase());
+  if(!bank){
+    const resolved = resolveMetrics(newMetrics);
+    STATE.banks.push({name, periods:newPeriods.slice(), metrics:{...newMetrics}, resolved});
+    return {name, merged:false};
+  }
+  const unionP = bank.periods.slice();
+  newPeriods.forEach(p=>{ if(!unionP.includes(p)) unionP.push(p); });
+  const remap = (oldPeriods, oldRow) => unionP.map(p=>{ const idx=oldPeriods.indexOf(p); return idx>=0 ? oldRow[idx] : null; });
+  const merged = {};
+  Object.entries(bank.metrics).forEach(([k,row])=>{ merged[k] = remap(bank.periods, row); });
+  Object.entries(newMetrics).forEach(([k,row])=>{
+    const remapped = remap(newPeriods, row);
+    if(!merged[k]) merged[k] = new Array(unionP.length).fill(null);
+    remapped.forEach((v,i)=>{ if(v!==null && v!==undefined && (merged[k][i]===null || merged[k][i]===undefined)) merged[k][i]=v; });
+  });
+  bank.periods = unionP;
+  bank.metrics = merged;
+  bank.resolved = resolveMetrics(merged);
+  return {name, merged:true};
+}
 
-    doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(30,30,30);
-    doc.text(coFull, margin, y); y += 7;
-    doc.setFontSize(11); doc.setTextColor(120,120,120); doc.setFont('helvetica','normal');
-    doc.text(periodLine, margin, y, {maxWidth:contentW}); y += 8;
+function quarterKey(label){
+  let m;
+  if(m = label.match(/^Q([1-4])FY(\d{2,4})$/i)) return parseInt(m[2],10)*10 + parseInt(m[1],10);
+  if(m = label.match(/^H([1-2])FY(\d{2,4})$/i)) return parseInt(m[2],10)*10 + (parseInt(m[1],10)===1?2:4);
+  if(m = label.match(/^(\d{1,2})MFY(\d{2,4})$/i)) return parseInt(m[2],10)*10 + Math.min(4, Math.ceil(parseInt(m[1],10)/3)) + 0.5;
+  return null;
+}
+function annualKey(label){ const m=label.match(/^FY(\d{2,4})$/i); if(!m) return null; return parseInt(m[1],10); }
 
-    doc.setFillColor(...meta.accent);
-    doc.rect(margin, y, contentW, 8, 'F');
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(12);
-    doc.text(meta.label + ' view', margin+3, y+5.8);
-    y += 14;
+function unionPeriods(mode){
+  const set = new Set();
+  STATE.banks.forEach(b=> b.periods.forEach(p=>{
+    if(mode==='quarterly' ? quarterKey(p)!==null : annualKey(p)!==null) set.add(p);
+  }));
+  const arr = Array.from(set);
+  arr.sort((a,b)=> mode==='quarterly' ? quarterKey(a)-quarterKey(b) : annualKey(a)-annualKey(b));
+  return arr;
+}
+function seriesForBank(bank, metricKey, labels){
+  const row = bank.resolved[metricKey];
+  if(!row) return null;
+  return labels.map(l=>{ const idx = bank.periods.indexOf(l); return idx>=0 ? row[idx] : null; });
+}
+function fmt(v, type){
+  if(v===null||v===undefined||isNaN(v)) return '—';
+  if(type==='percent') return v.toFixed(2)+'%';
+  return v>=1000 ? v.toLocaleString('en-IN',{maximumFractionDigits:0}) : v.toFixed(1);
+}
+function deltaText(arr, idx){
+  if(!arr) return '';
+  const cur = arr[idx]; if(cur===null||cur===undefined) return '';
+  const prev = idx>0?arr[idx-1]:null; const yoy = idx>=4?arr[idx-4]:null;
+  let parts=[];
+  if(prev!==null&&prev!==undefined){ const d=cur-prev; parts.push((d>=0?'▲ ':'▼ ')+Math.abs(d).toFixed(2)+' vs prior'); }
+  if(yoy!==null&&yoy!==undefined){ const d=cur-yoy; parts.push((d>=0?'▲ ':'▼ ')+Math.abs(d).toFixed(2)+' YoY'); }
+  return parts.join('  ·  ');
+}
+const LOWER_IS_BETTER = new Set(['gnpa','nnpa','cir']);
 
-    const summary = (financials.sum && financials.sum[meta.sumKey]) || '';
-    if(summary){
-      doc.setTextColor(40,40,40); doc.setFont('helvetica','italic'); doc.setFontSize(10);
-      const lines = doc.splitTextToSize(summary, contentW);
-      doc.text(lines, margin, y); y += lines.length*4.6 + 6;
+// ---------- Bank chips ----------
+function renderChips(){
+  const el = document.getElementById('bankChips');
+  el.innerHTML = '';
+  STATE.banks.forEach((b, i)=>{
+    const chip = document.createElement('div'); chip.className='chip';
+    chip.innerHTML = `<span class="swatch" style="background:${PALETTE[i%PALETTE.length]}"></span>${b.name} <span style="color:var(--faint)">(${b.periods.length}p)</span>`;
+    const rm = document.createElement('button'); rm.textContent='✕';
+    rm.addEventListener('click', ()=>{ STATE.banks.splice(i,1); renderChips(); updateBuildPanel(); });
+    chip.appendChild(rm);
+    el.appendChild(chip);
+  });
+}
+function updateBuildPanel(){
+  document.getElementById('buildPanel').style.display = STATE.banks.length>0 ? 'block':'none';
+  document.getElementById('buildBtn').disabled = STATE.banks.length===0;
+}
+
+document.getElementById('loadSample').addEventListener('click', ()=>{
+  document.getElementById('bankName').value = 'Suryoday Small Finance Bank';
+  document.getElementById('rawData').value =
+"Metric\tQ1FY27\tFY26\tQ4FY26\tQ3FY26\tQ2FY26\tQ1FY26\tFY25\tQ4FY25\tQ3FY25\tQ2FY25\tQ1FY25\tFY24\tQ4FY24\tQ3FY24\tFY23\tFY22\n"+
+"Total Income\t770.2\t2520.0\t691.9\t624.8\t599.5\t603.8\t2171.0\t530.7\t527.4\t554.7\t558.3\t1808.1\t509.4\t462.6\t1281.1\t1036.2\n"+
+"Net Interest Income\t315.7\t1098.7\t316.6\t276.8\t258.2\t247.1\t1106.1\t244.7\t268.3\t300.0\t293.2\t962.2\t270.8\t245.7\t746.6\t584.5\n"+
+"Net Profit\t75.2\t152.0\t49.7\t36.6\t30.4\t35.3\t115.0\t-33.8\t33.3\t45.4\t70.1\t216.0\t60.8\t57.2\t77.7\t-93.0\n"+
+"Net Interest Margin (%)\t7.20\t7.30\t7.90\t7.30\t6.90\t7.20\t9.00\t7.80\t8.40\t9.70\t10.00\t9.80\t10.10\t9.80\t9.50\t8.60\n"+
+"Cost to Income Ratio\t70.1\t73.7\t73.7\t75.1\t76.6\t69.4\t70.6\t84.7\t76.8\t63.5\t60.3\t61.6\t61.7\t61.6\t60.0\t60.9\n"+
+"% of Gross NPAs\t6.60\t6.55\t6.55\t6.69\t5.93\t8.46\t7.16\t7.16\t5.53\t3.03\t2.84\t2.94\t2.94\t3.06\t3.13\t11.80\n"+
+"% of Net NPAs\t1.27\t4.21\t4.21\t4.35\t3.80\t5.64\t4.58\t4.58\t3.13\t0.80\t0.47\t0.86\t0.86\t1.42\t1.55\t5.97\n"+
+"PCR without Tech W/off (%)\t81.79\t37.30\t37.30\t36.60\t37.30\t35.36\t37.72\t37.72\t44.74\t74.29\t83.85\t71.17\t71.17\t54.31\t51.43\t52.57\n"+
+"Net Advances\t13354.1\t12878.8\t12878.8\t11520.8\t10805.1\t10521.2\t9974.4\t9974.4\t9326.6\t8807.0\t8284.9\t8078.0\t8078.0\t7178.6\t6015.1\t4750.9\n"+
+"Deposits\t14633.6\t13994.0\t13994.0\t12864.9\t11991.0\t11312.2\t10579.6\t10579.6\t9707.6\t8850.8\t8137.3\t7777.3\t7777.3\t6484.1\t5166.7\t3853.9\n"+
+"Net Advances Growth YoY\t26.9\t29.1\t29.1\t23.5\t22.7\t27.0\t23.5\t23.5\t29.9\t31.0\t34.0\t34.3\t34.3\t34.8\t26.6\t19.3\n"+
+"Deposit Growth YoY\t29.4\t32.3\t32.3\t32.5\t35.5\t39.0\t36.0\t36.0\t49.7\t38.5\t42.2\t50.5\t50.5\t38.1\t34.1\t18.4\n"+
+"CASA Ratio\t21.0\t22.6\t22.6\t21.2\t20.7\t17.7\t20.9\t20.9\t19.5\t17.9\t17.7\t20.1\t20.1\t18.5\t17.1\t18.8\n"+
+"Return on Assets\t1.52\t0.89\t1.08\t0.88\t0.76\t0.88\t0.84\t-0.92\t0.96\t1.40\t1.88\t1.94\t2.08\t2.04\t0.87\t-1.29\n"+
+"Return on Equity\t15.5\t7.6\t7.3\t6.0\t12.9\t5.1";
+});
+
+// ---------- Add-mode toggle ----------
+// ---------- File import ----------
+function readFileAsTable(file, onProgress){
+  return new Promise((resolve, reject)=>{
+    const ext = file.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+
+    if(ext==='xlsx' || ext==='xls'){
+      if(typeof XLSX === 'undefined'){ reject(new Error('Excel import unavailable — SheetJS library did not load. Try reloading, or paste/import a CSV/PDF version instead.')); return; }
+      reader.onload = (e)=>{
+        try{
+          const wb = XLSX.read(new Uint8Array(e.target.result), {type:'array'});
+          const sheet = wb.Sheets[wb.SheetNames[0]];
+          resolve(XLSX.utils.sheet_to_csv(sheet, {FS:'\t'}));
+        }catch(err){ reject(err); }
+      };
+      reader.onerror = ()=>reject(new Error('could not read '+file.name));
+      reader.readAsArrayBuffer(file);
+
+    } else if(ext==='pdf'){
+      if(typeof pdfjsLib === 'undefined'){ reject(new Error('PDF import unavailable — PDF.js library did not load. Try reloading, or paste/import a CSV/Excel version instead.')); return; }
+      file.arrayBuffer().then(buf=> extractTableFromPDF(buf, onProgress)).then(text=> resolve(trimToFirstTable(text))).catch(reject);
+
+    } else if(ext==='csv' || ext==='tsv' || ext==='txt'){
+      reader.onload = (e)=>{
+        let text = e.target.result;
+        if(!text.includes('\t') && text.includes(',')){
+          text = text.split('\n').map(line=>line.split(',').map(c=>c.trim()).join('\t')).join('\n');
+        }
+        resolve(text);
+      };
+      reader.onerror = ()=>reject(new Error('could not read '+file.name));
+      reader.readAsText(file);
+
+    } else {
+      // Unknown extension: best effort — try reading as plain text (works for many
+      // text-ish exports); if it looks like binary garbage, fail with a clear message
+      // rather than silently inserting junk.
+      reader.onload = (e)=>{
+        let text = e.target.result;
+        // crude binary-content check: lots of null/control characters means this isn't text
+        const controlChars = (text.match(/[\x00-\x08\x0E-\x1F]/g) || []).length;
+        if(controlChars > text.length * 0.02){
+          reject(new Error(`.${ext} isn't a format this app can read directly. Try exporting it as .csv, .xlsx, or .pdf instead.`));
+          return;
+        }
+        if(!text.includes('\t') && text.includes(',')){
+          text = text.split('\n').map(line=>line.split(',').map(c=>c.trim()).join('\t')).join('\n');
+        }
+        resolve(text);
+      };
+      reader.onerror = ()=>reject(new Error('could not read '+file.name));
+      reader.readAsText(file);
+    }
+  });
+}
+
+// Best-effort table reconstruction from a PDF's extracted text. PDFs don't store real table
+// structure — this groups text by row (Y position) and inserts tab breaks at wide horizontal
+// gaps between text runs (i.e. column boundaries). Works well for the clean, ruled financial
+// tables this app expects; always worth reviewing the result before adding the bank.
+// Multi-page PDFs (title slide, disclaimers, etc.) produce a lot of noise before the actual
+// table. Scan for the first row that genuinely looks like a period header (several cells
+// matching Q1FY27 / FY26-style labels) and cut everything before it.
+function trimToFirstTable(text){
+  const lines = text.split('\n');
+  for(let i=0;i<lines.length;i++){
+    const cells = lines[i].includes('\t') ? lines[i].split('\t') : lines[i].split(/\s{2,}/);
+    const periodLike = cells.filter(c=>/^Q[1-4]\s*FY\s*\d{2,4}$/i.test(c.trim()) || /^FY\s*\d{2,4}$/i.test(c.trim()));
+    if(periodLike.length>=3){
+      return lines.slice(i).join('\n');
+    }
+  }
+  return text; // no clear header found — hand back everything and let the user clean it up
+}
+
+async function extractTableFromPDF(arrayBuffer, onProgress){
+  const pdf = await pdfjsLib.getDocument({data: arrayBuffer}).promise;
+  const lines = [];
+  for(let p=1; p<=pdf.numPages; p++){
+    if(onProgress && (p % 5 === 0 || p===pdf.numPages)) onProgress(p, pdf.numPages);
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    if(content.items.length===0) continue;
+    const rows = {};
+    content.items.forEach(item=>{
+      const y = item.transform[5];
+      const bucket = Math.round(y/4)*4; // merge text runs on (roughly) the same line
+      (rows[bucket] = rows[bucket] || []).push({x:item.transform[4], w:item.width||0, text:item.str});
+    });
+    const ys = Object.keys(rows).map(Number).sort((a,b)=>b-a); // top of page first
+    ys.forEach(y=>{
+      const items = rows[y].filter(it=>it.text.trim().length>0).sort((a,b)=>a.x-b.x);
+      if(items.length===0) return;
+      let line = items[0].text;
+      let prevEnd = items[0].x + items[0].w;
+      for(let i=1;i<items.length;i++){
+        const gap = items[i].x - prevEnd;
+        line += (gap > 6 ? '\t' : (gap > 1 ? ' ' : '')) + items[i].text;
+        prevEnd = items[i].x + items[i].w;
+      }
+      if(line.trim()) lines.push(line);
+    });
+    lines.push(''); // blank line between pages
+    // Yield to the browser every few pages so the tab stays responsive and the status text can repaint
+    // — long unbroken synchronous work is exactly what makes large PDFs look frozen on mobile.
+    if(p % 5 === 0) await new Promise(r=>setTimeout(r, 0));
+  }
+  return lines.join('\n');
+}
+
+function niceNameFromFile(filename){
+  return filename.replace(/\.[^/.]+$/, '').replace(/[_\-]+/g,' ').trim();
+}
+// If the file's first line looks like a title (bank name) rather than a period header
+// (e.g. "Suryoday Small Finance Bank" on its own line above the table), pull it out
+// as the bank name and strip it from the table text. Otherwise fall back to fallbackName.
+function extractBankNameAndTable(text, fallbackName){
+  const lines = text.split('\n');
+  for(let i=0;i<Math.min(lines.length,3);i++){
+    const line = lines[i].trim();
+    if(!line) continue;
+    const cells = line.includes('\t') ? line.split('\t').map(c=>c.trim()) : line.split(/\s{2,}|,/).map(c=>c.trim());
+    const looksLikePeriodHeader = cells.length>=2 && cells.slice(1).some(c=>/^Q[1-4]\s*FY\s*\d{2,4}$/i.test(c) || /^FY\s*\d{2,4}$/i.test(c));
+    const looksLikeMetricRow = cells.length>=2 && cells.slice(1).some(c=>/^-?\d/.test(c));
+    if(looksLikePeriodHeader || looksLikeMetricRow){
+      // First real content line is the header/data — no title line found before it.
+      const rest = lines.slice(i).join('\n');
+      return { name: fallbackName, table: rest.trim() };
+    }
+    if(cells.length===1 && line.length>1 && line.length<80){
+      // A short single-cell line before the table — treat it as the bank name.
+      const name = line.replace(/^#+\s*/,'').replace(/[:\-–]+$/,'').trim();
+      const rest = lines.slice(i+1).join('\n');
+      return { name: name || fallbackName, table: rest.trim() };
+    }
+  }
+  return { name: fallbackName, table: text.trim() };
+}
+
+document.getElementById('singlePasteBtn').addEventListener('click', async ()=>{
+  const status = document.getElementById('statusLine');
+  try{
+    const text = await navigator.clipboard.readText();
+    if(!text || !text.trim()){ status.className='status err'; status.textContent='Clipboard is empty — copy the table first, then tap this.'; return; }
+    const extracted = extractBankNameAndTable(text, document.getElementById('bankName').value.trim() || 'Bank');
+    document.getElementById('rawData').value = extracted.table;
+    if(!document.getElementById('bankName').value.trim()) document.getElementById('bankName').value = extracted.name;
+    status.className='status ok'; status.textContent = '✓ Pasted from clipboard — review below, then click "Add bank".';
+  }catch(err){
+    status.className='status err'; status.textContent = 'Could not read clipboard (' + err.message + '). Try long-pressing the text box below and choosing Paste instead.';
+  }
+});
+
+document.getElementById('bulkPasteBtn').addEventListener('click', async ()=>{
+  const status = document.getElementById('statusLine');
+  try{
+    const text = await navigator.clipboard.readText();
+    if(!text || !text.trim()){ status.className='status err'; status.textContent='Clipboard is empty — copy the tables first, then tap this.'; return; }
+    const area = document.getElementById('bulkData');
+    area.value = (area.value.trim() ? area.value.trim() + '\n\n' : '') + text.trim();
+    status.className='status ok'; status.textContent = '✓ Pasted from clipboard — make sure each bank starts with a "### Name" line, then click "Add all banks".';
+  }catch(err){
+    status.className='status err'; status.textContent = 'Could not read clipboard (' + err.message + '). Try long-pressing the text box below and choosing Paste instead.';
+  }
+});
+
+document.getElementById('singleFileInput').addEventListener('change', async (e)=>{
+  const file = e.target.files[0]; if(!file) return;
+  const status = document.getElementById('statusLine');
+  status.className='status'; status.textContent = 'Reading '+file.name+'…';
+  try{
+    const raw = await readFileAsTable(file, (p,total)=>{
+      status.textContent = `Reading ${file.name}… page ${p} of ${total}${total>60 ? ' (large file — this may take a few minutes on mobile)' : ''}`;
+    });
+    const extracted = extractBankNameAndTable(raw, niceNameFromFile(file.name));
+    document.getElementById('rawData').value = extracted.table;
+    document.getElementById('bankName').value = extracted.name;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const pdfNote = ext==='pdf' ? ' PDF tables are reconstructed automatically — please check the columns lined up correctly.' : '';
+    status.className='status ok'; status.textContent = `✓ Loaded ${file.name} as "${extracted.name}" — review below, then click "Add bank".${pdfNote}`;
+  }catch(err){
+    status.className='status err'; status.textContent = 'Could not read '+file.name+': '+err.message;
+  }
+  e.target.value = '';
+});
+
+document.getElementById('bulkFileInput').addEventListener('change', async (e)=>{
+  const files = Array.from(e.target.files || []); if(files.length===0) return;
+  const status = document.getElementById('statusLine');
+  status.className='status'; status.textContent = 'Reading '+files.length+' file(s)…';
+  const area = document.getElementById('bulkData');
+  const names = [];
+  for(const file of files){
+    try{
+      const raw = await readFileAsTable(file, (p,total)=>{
+        status.textContent = `Reading ${file.name}… page ${p} of ${total}${total>60 ? ' (large file — this may take a few minutes on mobile)' : ''}`;
+      });
+      if(raw.trim().startsWith('###')){
+        area.value = (area.value.trim() ? area.value.trim() + '\n\n' : '') + raw.trim();
+      } else {
+        const extracted = extractBankNameAndTable(raw, niceNameFromFile(file.name));
+        names.push(extracted.name);
+        area.value = (area.value.trim() ? area.value.trim() + '\n\n' : '') + `### ${extracted.name}\n${extracted.table}`;
+      }
+    }catch(err){
+      status.className='status err'; status.textContent = 'Could not read '+file.name+': '+err.message; return;
+    }
+  }
+  status.className='status ok'; status.textContent = `✓ Loaded ${files.length} file(s) below as ${names.join(', ')} — review, then click "Add all banks".`;
+  e.target.value = '';
+});
+
+document.getElementById('addModeToggle').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#addModeToggle button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const mode = btn.dataset.addMode;
+  document.getElementById('singleAddBlock').classList.toggle('hidden', mode!=='single');
+  document.getElementById('bulkAddBlock').classList.toggle('hidden', mode!=='bulk');
+  document.getElementById('wideAddBlock').classList.toggle('hidden', mode!=='wide');
+});
+
+document.getElementById('loadBulkSample').addEventListener('click', ()=>{
+  document.getElementById('bulkData').value =
+"### Suryoday Small Finance Bank\n"+
+"Metric\tQ1FY27\tFY26\tQ4FY26\tQ3FY26\tQ2FY26\tQ1FY26\tFY25\tQ4FY25\tQ3FY25\tQ2FY25\tQ1FY25\tFY24\tQ4FY24\tQ3FY24\tFY23\tFY22\n"+
+"Total Income\t770.2\t2520.0\t691.9\t624.8\t599.5\t603.8\t2171.0\t530.7\t527.4\t554.7\t558.3\t1808.1\t509.4\t462.6\t1281.1\t1036.2\n"+
+"Net Interest Income\t315.7\t1098.7\t316.6\t276.8\t258.2\t247.1\t1106.1\t244.7\t268.3\t300.0\t293.2\t962.2\t270.8\t245.7\t746.6\t584.5\n"+
+"Net Profit\t75.2\t152.0\t49.7\t36.6\t30.4\t35.3\t115.0\t-33.8\t33.3\t45.4\t70.1\t216.0\t60.8\t57.2\t77.7\t-93.0\n"+
+"Net Interest Margin (%)\t7.20\t7.30\t7.90\t7.30\t6.90\t7.20\t9.00\t7.80\t8.40\t9.70\t10.00\t9.80\t10.10\t9.80\t9.50\t8.60\n"+
+"Cost to Income Ratio\t70.1\t73.7\t73.7\t75.1\t76.6\t69.4\t70.6\t84.7\t76.8\t63.5\t60.3\t61.6\t61.7\t61.6\t60.0\t60.9\n"+
+"% of Gross NPAs\t6.60\t6.55\t6.55\t6.69\t5.93\t8.46\t7.16\t7.16\t5.53\t3.03\t2.84\t2.94\t2.94\t3.06\t3.13\t11.80\n"+
+"% of Net NPAs\t1.27\t4.21\t4.21\t4.35\t3.80\t5.64\t4.58\t4.58\t3.13\t0.80\t0.47\t0.86\t0.86\t1.42\t1.55\t5.97\n"+
+"PCR without Tech W/off (%)\t81.79\t37.30\t37.30\t36.60\t37.30\t35.36\t37.72\t37.72\t44.74\t74.29\t83.85\t71.17\t71.17\t54.31\t51.43\t52.57\n"+
+"Net Advances\t13354.1\t12878.8\t12878.8\t11520.8\t10805.1\t10521.2\t9974.4\t9974.4\t9326.6\t8807.0\t8284.9\t8078.0\t8078.0\t7178.6\t6015.1\t4750.9\n"+
+"Deposits\t14633.6\t13994.0\t13994.0\t12864.9\t11991.0\t11312.2\t10579.6\t10579.6\t9707.6\t8850.8\t8137.3\t7777.3\t7777.3\t6484.1\t5166.7\t3853.9\n"+
+"Net Advances Growth YoY\t26.9\t29.1\t29.1\t23.5\t22.7\t27.0\t23.5\t23.5\t29.9\t31.0\t34.0\t34.3\t34.3\t34.8\t26.6\t19.3\n"+
+"Deposit Growth YoY\t29.4\t32.3\t32.3\t32.5\t35.5\t39.0\t36.0\t36.0\t49.7\t38.5\t42.2\t50.5\t50.5\t38.1\t34.1\t18.4\n"+
+"CASA Ratio\t21.0\t22.6\t22.6\t21.2\t20.7\t17.7\t20.9\t20.9\t19.5\t17.9\t17.7\t20.1\t20.1\t18.5\t17.1\t18.8\n"+
+"Return on Assets\t1.52\t0.89\t1.08\t0.88\t0.76\t0.88\t0.84\t-0.92\t0.96\t1.40\t1.88\t1.94\t2.08\t2.04\t0.87\t-1.29\n"+
+"Return on Equity\t15.5\t7.6\t7.3\t6.0\t12.9\t5.1\n\n"+
+"### Sample Peer Bank (illustrative — not real financials)\n"+
+"Metric\tQ1FY27\tFY26\tQ4FY26\tQ3FY26\tQ2FY26\tQ1FY26\n"+
+"Total Income\t612.4\t2210.5\t560.2\t540.1\t520.3\t510.8\n"+
+"Net Interest Income\t298.1\t1050.2\t280.4\t265.0\t250.1\t240.6\n"+
+"Net Profit\t68.5\t240.0\t65.2\t60.1\t58.0\t56.7\n"+
+"Net Interest Margin (%)\t5.90\t6.10\t6.00\t6.20\t6.30\t6.40\n"+
+"Cost to Income Ratio\t58.2\t59.0\t58.5\t60.1\t61.0\t61.5\n"+
+"% of Gross NPAs\t1.80\t1.90\t1.85\t2.00\t2.10\t2.20\n"+
+"% of Net NPAs\t0.55\t0.60\t0.58\t0.65\t0.70\t0.75\n"+
+"PCR without Tech W/off (%)\t70.10\t68.50\t69.00\t67.20\t66.00\t65.10\n"+
+"Net Advances\t18500.0\t17800.0\t17800.0\t17100.0\t16400.0\t15900.0\n"+
+"Deposits\t20100.0\t19200.0\t19200.0\t18500.0\t17700.0\t17000.0\n"+
+"Net Advances Growth YoY\t16.4\t17.1\t17.1\t16.8\t15.9\t15.2\n"+
+"Deposit Growth YoY\t18.2\t18.9\t18.9\t18.0\t17.1\t16.3\n"+
+"CASA Ratio\t34.0\t33.5\t33.5\t33.0\t32.6\t32.1\n"+
+"Return on Assets\t1.95\t1.90\t1.92\t1.85\t1.80\t1.78\n"+
+"Return on Equity\t16.8\t16.2\t16.5\t15.8\t15.2\t15.0";
+});
+
+function parseBulkInput(raw){
+  const blocks = raw.split(/^###\s*/m).map(b=>b.trim()).filter(b=>b.length>0);
+  const results = [];
+  blocks.forEach(block=>{
+    const lines = block.split('\n');
+    const name = lines[0].trim();
+    const tableText = lines.slice(1).join('\n').trim();
+    if(!name || !tableText) return;
+    const parsed = parseData(tableText);
+    if(!parsed || parsed.periods.length===0 || Object.keys(parsed.metrics).length===0){
+      results.push({name, error:'could not parse table'}); return;
+    }
+    const resolved = resolveMetrics(parsed.metrics);
+    if(Object.keys(resolved).length===0){
+      results.push({name, error:'no recognized metrics'}); return;
+    }
+    results.push({name, periods:parsed.periods, metrics:parsed.metrics, resolved});
+  });
+  return results;
+}
+
+document.getElementById('addBulkBtn').addEventListener('click', ()=>{
+  const status = document.getElementById('statusLine');
+  const raw = document.getElementById('bulkData').value;
+  if(!raw.includes('###')){
+    status.className='status err'; status.textContent='Start each bank with a "### Bank Name" line so it can split them apart.'; return;
+  }
+  const results = parseBulkInput(raw);
+  if(results.length===0){
+    status.className='status err'; status.textContent='No banks found — check the "### Bank Name" markers.'; return;
+  }
+  let added=0, failed=[];
+  results.forEach(r=>{
+    if(r.error){ failed.push(`${r.name} (${r.error})`); return; }
+    STATE.banks.push({name:r.name, periods:r.periods, metrics:r.metrics, resolved:r.resolved});
+    added++;
+  });
+  renderChips(); updateBuildPanel();
+  document.getElementById('bulkData').value='';
+  if(failed.length){
+    status.className='status err'; status.textContent = `✓ Added ${added} bank(s). Skipped: ${failed.join(', ')}.`;
+  } else {
+    status.className='status ok'; status.textContent = `✓ Added ${added} bank(s). Add more, or build the dashboard.`;
+  }
+});
+
+document.getElementById('addWideBtn').addEventListener('click', ()=>{
+  const status = document.getElementById('statusLine');
+  const raw = document.getElementById('wideData').value;
+  if(!raw.trim()){
+    status.className='status err'; status.textContent='Paste or import a peer-comparison report first.'; return;
+  }
+  const blocks = parseWideReport(raw);
+  if(blocks.length===0){
+    status.className='status err'; status.textContent='Couldn\'t find any period-labeled comparison tables (e.g. "Cost Ratios Analysis 9MFY26") in this text.'; return;
+  }
+  const {allPeriods, companies, result} = transposeWideBlocks(blocks);
+  let addedCount=0, mergedCount=0;
+  const names = [];
+  companies.forEach(co=>{
+    const fullName = expandCompanyName(co);
+    const {merged} = mergeOrAddBank(fullName, result[co].periods, result[co].metrics);
+    if(merged) mergedCount++; else addedCount++;
+    names.push(fullName);
+  });
+  renderChips(); updateBuildPanel();
+  document.getElementById('wideData').value='';
+  status.className='status ok';
+  status.textContent = `✓ Found ${blocks.length} period table(s) across ${allPeriods.join(', ')}. Added ${addedCount} new bank(s), merged into ${mergedCount} existing one(s): ${names.join(', ')}.`;
+});
+
+document.getElementById('loadWideSample').addEventListener('click', ()=>{
+  document.getElementById('wideData').value =
+"Public Sector Banks Comparative Analysis\n"+
+"Cost Ratios Analysis\t9MFY26\n"+
+"Particulars (INR in Crores)\tPNB\tUnion\tBOI\tINBK\tCBI\tIOB\tBOM\tUCO\tPJSB\n"+
+"Net Interest Margin (%)\t2.60\t2.72\t2.51\t3.25\t3.00\t3.19\t3.88\t3.03\t2.57\n"+
+"Cost to Income Ratio\t52.85\t49.94\t52.11\t46.40\t58.55\t45.27\t37.29\t53.01\t60.84\n"+
+"Return on Assets\t0.83\t1.20\t0.90\t1.32\t1.02\t1.20\t1.83\t0.75\t0.73\n"+
+"Return on Equity\t14.45\t15.20\t14.49\t19.66\t14.29\t19.98\t23.30\t11.61\t10.62\n"+
+"% of Gross NPAs\t3.19\t3.06\t2.26\t2.23\t2.70\t1.54\t1.60\t2.41\t2.60\n"+
+"\n"+
+"Public Sector Banks Comparative Analysis\n"+
+"Cost Ratios Analysis\tFY25\n"+
+"Particulars (INR in Crores)\tPNB\tUnion\tBOI\tINBK\tCBI\tIOB\tBOM\tUCO\tPJSB\n"+
+"Net Interest Margin (%)\t2.93\t2.91\t2.82\t3.41\t3.40\t3.25\t4.00\t3.08\t2.67\n"+
+"Cost to Income Ratio\t54.59\t45.48\t50.84\t44.77\t58.87\t47.14\t38.37\t56.99\t61.23\n"+
+"Return on Assets\t0.97\t1.26\t0.90\t1.32\t0.86\t0.92\t1.75\t0.76\t0.67\n"+
+"Return on Equity\t19.33\t17.20\t15.27\t20.76\t12.48\t16.28\t22.92\t13.09\t10.82\n"+
+"% of Gross NPAs\t3.95\t3.60\t3.27\t3.09\t3.18\t2.14\t1.74\t2.69\t3.38";
+});
+
+document.getElementById('widePasteBtn').addEventListener('click', async ()=>{
+  const status = document.getElementById('statusLine');
+  try{
+    const text = await navigator.clipboard.readText();
+    if(!text || !text.trim()){ status.className='status err'; status.textContent='Clipboard is empty — copy the report first, then tap this.'; return; }
+    document.getElementById('wideData').value = text;
+    status.className='status ok'; status.textContent='✓ Pasted from clipboard — review below, then click "Add peer report banks".';
+  }catch(err){
+    status.className='status err'; status.textContent = 'Could not read clipboard (' + err.message + '). Try long-pressing the text box below and choosing Paste instead.';
+  }
+});
+
+document.getElementById('wideFileInput').addEventListener('change', async (e)=>{
+  const files = Array.from(e.target.files || []); if(files.length===0) return;
+  const status = document.getElementById('statusLine');
+  status.className='status'; status.textContent = 'Reading '+files.length+' file(s)…';
+  const area = document.getElementById('wideData');
+  for(const file of files){
+    try{
+      const table = await readFileAsTable(file, (p,total)=>{
+        status.textContent = `Reading ${file.name}… page ${p} of ${total}${total>60 ? ' — large file, this can take several minutes on mobile. Keep this tab open and active.' : ''}`;
+      });
+      area.value = (area.value.trim() ? area.value.trim() + '\n\n' : '') + table.trim();
+    }catch(err){
+      status.className='status err'; status.textContent = 'Could not read '+file.name+': '+err.message; return;
+    }
+  }
+  status.className='status ok'; status.textContent = `✓ Loaded ${files.length} file(s) below — review, then click "Add peer report banks".`;
+  e.target.value = '';
+});
+
+document.getElementById('addBankBtn').addEventListener('click', ()=>{
+  const status = document.getElementById('statusLine');
+  const name = document.getElementById('bankName').value.trim();
+  const raw = document.getElementById('rawData').value;
+  if(!name){ status.className='status err'; status.textContent='Give this bank a name first.'; return; }
+  const parsed = parseData(raw);
+  if(!parsed || parsed.periods.length===0 || Object.keys(parsed.metrics).length===0){
+    status.className='status err'; status.textContent='Could not parse that table — check the header row and metric rows.'; return;
+  }
+  const resolved = resolveMetrics(parsed.metrics);
+  if(Object.keys(resolved).length===0){
+    status.className='status err'; status.textContent='Parsed the table but recognized none of the standard metrics. Check row labels.'; return;
+  }
+  STATE.banks.push({name, periods:parsed.periods, metrics:parsed.metrics, resolved});
+  renderChips(); updateBuildPanel();
+  document.getElementById('bankName').value=''; document.getElementById('rawData').value='';
+  status.className='status ok'; status.textContent = `✓ Added ${name} (matched ${Object.keys(resolved).length}/${METRIC_DEFS.length} metrics). Add another bank, or build the dashboard.`;
+});
+
+// ---------- Leaderboard ----------
+function renderLeaderboard(){
+  const labels = unionPeriods(STATE.mode);
+  const latest = labels[labels.length-1];
+  const table = document.getElementById('lbTable');
+  if(!latest || STATE.banks.length===0){ table.innerHTML=''; return; }
+  let html = '<tr><th>Metric</th>' + STATE.banks.map(b=>`<th>${b.name}</th>`).join('') + '</tr>';
+  let rowIdx = 0;
+  LB_METRICS.forEach(mk=>{
+    const def = METRIC_DEFS.find(d=>d.key===mk);
+    const vals = STATE.banks.map(b=>{
+      const s = seriesForBank(b, mk, labels);
+      return s ? s[s.length-1] : null;
+    });
+    const valid = vals.filter(v=>v!==null && v!==undefined);
+    if(valid.length===0) return;
+    const lowerBetter = LOWER_IS_BETTER.has(mk);
+    const best = lowerBetter ? Math.min(...valid) : Math.max(...valid);
+    const worst = lowerBetter ? Math.max(...valid) : Math.min(...valid);
+    const rangeMin = Math.min(...valid), rangeMax = Math.max(...valid);
+    const range = (rangeMax-rangeMin) || 1;
+    html += `<tr>` + `<td>${def.label}</td>` + vals.map((v,ci)=>{
+      if(v===null||v===undefined) return '<td>—</td>';
+      let cls = '';
+      if(valid.length>1){ if(v===best) cls='cell-best'; else if(v===worst) cls='cell-worst'; }
+      const pct = valid.length>1 ? Math.max(8, Math.round(((v-rangeMin)/range)*100)) : 100;
+      const delay = (rowIdx*90 + ci*40);
+      return `<td class="${cls}"><div class="lb-bar-wrap"><div class="lb-bar" style="width:${pct}%; animation-delay:${delay}ms;"></div><span class="lb-val">${fmt(v, def.type)}</span></div></td>`;
+    }).join('') + '</tr>';
+    rowIdx++;
+  });
+  table.innerHTML = html;
+}
+
+// ---------- Charts (self-contained canvas engine — no external chart library needed) ----------
+function destroyCharts(){ STATE.charts={}; }
+
+function drawLiteChart(canvas, labels, datasets, hoverIndex, valueFmt, progress){
+  progress = progress===undefined ? 1 : progress;
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = canvas.parentElement.clientWidth || 300;
+  const cssH = 230;
+  canvas.width = Math.max(1, cssW*dpr); canvas.height = Math.max(1, cssH*dpr);
+  canvas.style.width = cssW+'px'; canvas.style.height = cssH+'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cssW,cssH);
+
+  const pad = {left:46, right:10, top:10, bottom:22};
+  const plotW = Math.max(10, cssW-pad.left-pad.right);
+  const plotH = Math.max(10, cssH-pad.top-pad.bottom);
+
+  const allVals = [];
+  datasets.forEach(ds=> ds.data.forEach(v=>{ if(v!==null && v!==undefined && !isNaN(v)) allVals.push(v); }));
+  let minV = allVals.length? Math.min(...allVals) : 0;
+  let maxV = allVals.length? Math.max(...allVals) : 1;
+  if(minV===maxV){ minV -= Math.abs(minV)*0.1 || 1; maxV += Math.abs(maxV)*0.1 || 1; }
+  const span = maxV-minV; minV -= span*0.12; maxV += span*0.12;
+
+  const n = labels.length;
+  const xFor = (i)=> n<=1 ? pad.left+plotW/2 : pad.left + (plotW*i/(n-1));
+  const yFor = (v)=> pad.top + plotH - ((v-minV)/(maxV-minV))*plotH;
+  const baseY = pad.top + plotH;
+
+  ctx.strokeStyle='rgba(255,255,255,0.06)'; ctx.fillStyle='#8A93AC';
+  ctx.font='10px IBM Plex Mono, monospace'; ctx.textAlign='right'; ctx.textBaseline='middle';
+  const ticks=4;
+  for(let t=0;t<=ticks;t++){
+    const v = minV + (maxV-minV)*(t/ticks);
+    const y = pad.top + plotH - plotH*(t/ticks);
+    ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(cssW-pad.right,y); ctx.stroke();
+    ctx.fillText(valueFmt(v), pad.left-6, y);
+  }
+
+  ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillStyle='#8A93AC';
+  const maxLabels = cssW<380?4:7;
+  const step = Math.max(1, Math.ceil(n/maxLabels));
+  for(let i=0;i<n;i+=step){ ctx.fillText(labels[i], xFor(i), cssH-pad.bottom+6); }
+
+  // Reveal cutoff for the draw-in animation: a fractional x position, plus interpolated partial segment.
+  const revealX = pad.left + plotW*progress;
+
+  if(hoverIndex!==null && hoverIndex>=0 && hoverIndex<n && progress>=0.999){
+    const gx = xFor(hoverIndex);
+    ctx.strokeStyle='rgba(201,162,75,0.35)'; ctx.beginPath(); ctx.moveTo(gx,pad.top); ctx.lineTo(gx,cssH-pad.bottom); ctx.stroke();
+  }
+
+  datasets.forEach(ds=>{
+    // Build the point list, clipped to the reveal boundary (with one interpolated point at the edge for a smooth sweep).
+    const rawPts = ds.data.map((v,i)=> (v===null||v===undefined||isNaN(v)) ? null : {x:xFor(i), y:yFor(v), i});
+    const pts = [];
+    for(let k=0;k<rawPts.length;k++){
+      const p = rawPts[k];
+      if(!p){ pts.push(null); continue; }
+      if(p.x<=revealX){ pts.push(p); continue; }
+      const prev = pts.length ? pts[pts.length-1] : null;
+      if(prev && progress<1){
+        const t = (revealX-prev.x)/(p.x-prev.x);
+        if(t>0 && t<1) pts.push({x:revealX, y: prev.y+(p.y-prev.y)*t, i:null, edge:true});
+      }
+      break;
     }
 
-    let col = 0, rowY = y;
-    meta.chartIds.forEach(id=>{
-      const chart = charts[id];
-      if(!chart) return;
-      try{
-        const img = chart.toBase64Image('image/png', 1.0);
-        const imgW = contentW/2 - 3;
-        const imgH = imgW * 0.6;
-        if(rowY + imgH > 280){ doc.addPage(); rowY = margin; col = 0; }
-        const x = margin + col*(imgW+6);
-        doc.addImage(img, 'PNG', x, rowY, imgW, imgH);
-        col++;
-        if(col>1){ col = 0; rowY += imgH + 6; }
-      }catch(e){ /* skip unrendered chart */ }
-    });
-    if(col===1) rowY += (contentW/2-3)*0.6 + 6;
+    // Area fill
+    const solidPts = pts.filter(Boolean);
+    if(solidPts.length>1){
+      const grad = ctx.createLinearGradient(0, pad.top, 0, baseY);
+      grad.addColorStop(0, ds.color+'33');
+      grad.addColorStop(1, ds.color+'00');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(solidPts[0].x, baseY);
+      solidPts.forEach(p=> ctx.lineTo(p.x,p.y));
+      ctx.lineTo(solidPts[solidPts.length-1].x, baseY);
+      ctx.closePath(); ctx.fill();
+    }
 
-    if(key==='aud' && (financials.flags||[]).length){
-      let fy = rowY + 4;
-      if(fy > 265){ doc.addPage(); fy = margin; }
-      doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(30,30,30);
-      doc.text('Flags for follow-up', margin, fy); fy += 6;
-      doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(60,60,60);
-      financials.flags.forEach(flag=>{
-        const lines = doc.splitTextToSize('• ' + flag, contentW);
-        if(fy + lines.length*4.4 > 285){ doc.addPage(); fy = margin; }
-        doc.text(lines, margin, fy); fy += lines.length*4.4 + 2;
+    // Line
+    ctx.strokeStyle = ds.color; ctx.lineWidth = 2.3; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.beginPath();
+    let started=false;
+    pts.forEach(p=>{
+      if(!p) return;
+      if(!started){ ctx.moveTo(p.x,p.y); started=true; } else { ctx.lineTo(p.x,p.y); }
+    });
+    ctx.stroke();
+
+    // Points (skip the synthetic edge point used only for the reveal sweep)
+    pts.forEach(p=>{
+      if(!p || p.edge) return;
+      const isHover = p.i===hoverIndex;
+      ctx.beginPath(); ctx.arc(p.x,p.y, isHover?5.5:2.8, 0, Math.PI*2);
+      ctx.fillStyle = ds.color; ctx.fill();
+      if(isHover){
+        ctx.save(); ctx.shadowColor=ds.color; ctx.shadowBlur=10;
+        ctx.beginPath(); ctx.arc(p.x,p.y,5.5,0,Math.PI*2); ctx.fillStyle=ds.color; ctx.fill(); ctx.restore();
+        ctx.strokeStyle='#fff'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(p.x,p.y,5.5,0,Math.PI*2); ctx.stroke();
+      }
+    });
+  });
+
+  return {pad, plotW, plotH, xFor};
+}
+
+function easeOutCubic(t){ return 1-Math.pow(1-t,3); }
+
+function createLiteChart(canvas, labels, datasets, valueFmt){
+  let hoverIndex = null;
+  let geom = null;
+  let progress = 0;
+  let lastWidth = null;
+  function redraw(){ geom = drawLiteChart(canvas, labels, datasets, hoverIndex, valueFmt, progress); }
+  // Draw-in animation on first render
+  const start = performance.now();
+  const DURATION = 650;
+  function tick(now){
+    const t = Math.min(1, (now-start)/DURATION);
+    progress = easeOutCubic(t);
+    redraw();
+    if(t<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+  const api = {
+    labels, datasets,
+    setHover(idx){ hoverIndex = idx; progress = 1; redraw(); },
+    nearestIndex(clientX){
+      const rect = canvas.getBoundingClientRect();
+      const localX = clientX - rect.left;
+      const n = labels.length; if(n===0) return null;
+      let best=0, bestDist=Infinity;
+      for(let i=0;i<n;i++){ const x=geom.xFor(i); const d=Math.abs(x-localX); if(d<bestDist){bestDist=d;best=i;} }
+      return best;
+    },
+    toBase64Image(){ try{ return canvas.toDataURL('image/png'); }catch(e){ return null; } },
+    // Only redraws if the canvas's actual on-screen width changed — skips resize events caused
+    // by the on-screen keyboard opening/closing (which change viewport height, not width), so
+    // typing/pasting into a text field elsewhere on the page doesn't trigger 14 heavy canvas redraws.
+    resizeIfNeeded(){
+      const w = canvas.parentElement ? canvas.parentElement.clientWidth : null;
+      if(w !== null && w !== lastWidth){ lastWidth = w; redraw(); }
+    },
+  };
+  return api;
+}
+
+// Single, debounced, width-aware resize handler shared by all charts — avoids each of the ~14
+// chart instances registering its own listener (which previously caused a burst of heavy
+// synchronous redraws whenever the mobile keyboard opened/closed near any text field).
+let RESIZE_TIMER = null;
+window.addEventListener('resize', ()=>{
+  clearTimeout(RESIZE_TIMER);
+  RESIZE_TIMER = setTimeout(()=>{
+    Object.values(STATE.charts).forEach(c=> c.resizeIfNeeded && c.resizeIfNeeded());
+  }, 180);
+});
+
+// ---------- Floating tooltip (shared across all charts) ----------
+let TOOLTIP_EL = null;
+function getTooltipEl(){
+  if(!TOOLTIP_EL){ TOOLTIP_EL = document.createElement('div'); TOOLTIP_EL.className='chart-tooltip'; document.body.appendChild(TOOLTIP_EL); }
+  return TOOLTIP_EL;
+}
+function showTooltip(clientX, clientY, titleHtml, rowsHtml){
+  const el = getTooltipEl();
+  el.innerHTML = `<div class="tt-title">${titleHtml}</div>${rowsHtml}`;
+  el.classList.add('show');
+  const vw = window.innerWidth || 400;
+  let left = clientX + 16;
+  if(left + 240 > vw) left = clientX - 246;
+  el.style.left = Math.max(8,left)+'px';
+  el.style.top = (clientY - 10)+'px';
+}
+function hideTooltip(){ if(TOOLTIP_EL) TOOLTIP_EL.classList.remove('show'); }
+
+function renderCharts(){
+  const grid = document.getElementById('chartGrid');
+  grid.innerHTML=''; destroyCharts(); hideTooltip();
+  const labels = unionPeriods(STATE.mode);
+  if(labels.length===0){ grid.innerHTML = '<div style="color:var(--muted); grid-column:1/-1;">No overlapping periods found across the banks added.</div>'; return; }
+
+  let lastSection = null;
+  let cardIndex = 0;
+  METRIC_DEFS.forEach(def=>{
+    const datasets = [];
+    STATE.banks.forEach((bank, bi)=>{
+      const data = seriesForBank(bank, def.key, labels);
+      if(!data || data.every(v=>v===null)) return;
+      datasets.push({
+        label: bank.name, data, color: PALETTE[bi%PALETTE.length],
+        _bankName: bank.name, _metricKey: def.key, _type: def.type,
+      });
+    });
+    if(datasets.length===0) return;
+
+    if(def.section !== lastSection){
+      lastSection = def.section;
+      const head = document.createElement('div'); head.className='section-head';
+      head.innerHTML = `<span class="t">${def.section}</span><span class="line"></span>`;
+      grid.appendChild(head);
+    }
+
+    const latestIdx = labels.length-1;
+    const insightsNow = effectiveInsights();
+    const defaultBits = insightBitsFor(def, latestIdx, datasets, labels);
+    const defaultHtml = defaultBits.length
+      ? defaultBits.join(' &nbsp;·&nbsp; ')
+      : (insightsNow ? `No notable AI commentary for ${labels[latestIdx]}. Hover other points for computed deltas.` : `Hover a point for computed change. Click "Generate AI peer insights" for reasoning.`);
+
+    const legendHtml = datasets.map(ds=>`<span style="display:inline-flex;align-items:center;gap:5px;margin-right:12px;"><span style="width:8px;height:8px;border-radius:50%;background:${ds.color};display:inline-block;"></span>${ds.label}</span>`).join('');
+
+    const card = document.createElement('div'); card.className='chart-card';
+    card.style.animationDelay = Math.min(cardIndex*45, 400)+'ms';
+    cardIndex++;
+    card.innerHTML = `<h3>${def.label}</h3><div class="cap">${def.type==='percent'?'% ':'₹ Cr — '}by bank, ${STATE.mode} · tap/hover to explore</div>
+      <div class="chart-wrap"><canvas id="cv_${def.key}"></canvas></div>
+      <div style="font-size:10.5px; color:var(--muted); margin-top:8px;">${legendHtml}</div>
+      <div class="insight-line" id="il_${def.key}">${defaultHtml}</div>`;
+    grid.appendChild(card);
+
+    const canvas = card.querySelector('canvas');
+    const valueFmt = (v)=> def.type==='percent' ? v.toFixed(1)+'%' : (Math.abs(v)>=1000 ? (v/1000).toFixed(1)+'k' : v.toFixed(0));
+    const chart = createLiteChart(canvas, labels, datasets, valueFmt);
+    STATE.charts[def.key] = chart;
+
+    function handleHover(clientX, clientY){
+      const idx = chart.nearestIndex(clientX);
+      if(idx===null) return;
+      chart.setHover(idx);
+      const ilEl = document.getElementById('il_'+def.key);
+      const label = labels[idx];
+      const bits = insightBitsFor(def, idx, datasets, labels);
+      const valueBits = datasets.map(ds=>{
+        const v = ds.data[idx]; if(v===null||v===undefined) return null;
+        const dt = deltaText(ds.data, idx);
+        return `<b>${ds.label}:</b> ${fmt(v, ds._type)}${dt?' ('+dt+')':''}`;
+      }).filter(Boolean);
+      if(bits.length){
+        ilEl.innerHTML = `<div>${valueBits.join(' &nbsp;·&nbsp; ')}</div><div style="margin-top:4px;">${bits.join(' &nbsp;·&nbsp; ')}</div>`;
+      } else if(valueBits.length){
+        ilEl.innerHTML = valueBits.join(' &nbsp;·&nbsp; ') + (idx===latestIdx ? '' : ' — AI commentary focuses on the latest period.');
+      } else {
+        ilEl.innerHTML = `${label} — no data for this period.`;
+      }
+      // Floating tooltip
+      const rows = datasets.map(ds=>{
+        const v = ds.data[idx];
+        return `<div class="tt-row"><span class="tt-dot" style="background:${ds.color}"></span>${ds.label}<span class="tt-val">${fmt(v, ds._type)}</span></div>`;
+      }).join('');
+      showTooltip(clientX, clientY, label, rows);
+    }
+
+    canvas.addEventListener('mousemove', (evt)=> handleHover(evt.clientX, evt.clientY));
+    canvas.addEventListener('mouseleave', ()=>{
+      chart.setHover(null);
+      document.getElementById('il_'+def.key).innerHTML = defaultHtml;
+      hideTooltip();
+    });
+    // On touch devices there's no "hover" — a light touch-drag still previews values live,
+    // but tapping opens a detail view that stays open until closed, so there's no rush to read it.
+    canvas.addEventListener('touchstart', (evt)=>{
+      if(evt.touches && evt.touches[0]) handleHover(evt.touches[0].clientX, evt.touches[0].clientY);
+    }, {passive:true});
+    canvas.addEventListener('touchmove', (evt)=>{
+      if(evt.touches && evt.touches[0]) handleHover(evt.touches[0].clientX, evt.touches[0].clientY);
+    }, {passive:true});
+    canvas.addEventListener('touchend', ()=>{ hideTooltip(); }, {passive:true});
+    canvas.addEventListener('click', (evt)=>{
+      const idx = chart.nearestIndex(evt.clientX);
+      if(idx===null) return;
+      openChartModal(def, datasets, labels, idx, chart);
+    });
+  });
+}
+
+function openChartModal(def, datasets, labels, idx, chart){
+  const modal = document.getElementById('chartModal');
+  const label = labels[idx];
+  document.getElementById('modalTitle').textContent = def.label;
+  document.getElementById('modalSub').textContent = `${label} — tap a different point on the chart behind this to update, or close when done`;
+  try{ document.getElementById('modalChartImg').src = chart.toBase64Image(); }catch(e){}
+
+  const rowsEl = document.getElementById('modalRows');
+  rowsEl.innerHTML = datasets.map(ds=>{
+    const v = ds.data[idx];
+    const dt = deltaText(ds.data, idx);
+    const ai = STATE.aiInsights && STATE.aiInsights[def.key] && STATE.aiInsights[def.key][ds._bankName];
+    const bakedAi = STATE.bakedInsights && STATE.bakedInsights[def.key] && STATE.bakedInsights[def.key][ds._bankName];
+    const isLatest = idx === (labels.length-1);
+    const aiText = isLatest ? (ai || bakedAi) : null;
+    return `<div class="modal-row">
+      <div class="rb-name"><span class="rb-dot" style="background:${ds.color}"></span>${ds.label}</div>
+      <div class="rb-val">${fmt(v, ds._type)}${dt ? '  ·  '+dt : ''}</div>
+      ${aiText ? `<div class="rb-ai">✦ ${aiText}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  modal.classList.add('show');
+}
+function closeChartModal(){ document.getElementById('chartModal').classList.remove('show'); }
+document.getElementById('modalCloseBtn').addEventListener('click', closeChartModal);
+document.getElementById('chartModal').addEventListener('click', (e)=>{ if(e.target.id==='chartModal') closeChartModal(); });
+
+// Returns array of "<b>Bank:</b> reason" html strings for a metric+period, from AI insights (latest period only).
+function insightBitsFor(def, idx, datasets, labels){
+  const bits = [];
+  const isLatest = idx === (labels.length-1);
+  if(!isLatest) return bits;
+  datasets.forEach(ds=>{
+    const insightsNow2 = effectiveInsights();
+    const ai = insightsNow2 && insightsNow2[def.key] && insightsNow2[def.key][ds._bankName];
+    if(ai) bits.push(`<b>${ds.label}:</b> ${ai}`);
+  });
+  return bits;
+}
+
+// ---------- AI ----------
+async function generateInsights(){
+  const btn = document.getElementById('aiBtn'); const status = document.getElementById('statusLine');
+  btn.disabled=true; btn.textContent='✦ Thinking…';
+  status.className='status'; status.textContent='Asking Claude to compare peer performance…';
+
+  const labels = unionPeriods(STATE.mode).slice(-4);
+  const dataSummary = {};
+  AI_METRICS.forEach(mk=>{
+    const def = METRIC_DEFS.find(d=>d.key===mk);
+    const banks = {};
+    STATE.banks.forEach(b=>{
+      const s = seriesForBank(b, mk, labels);
+      if(s) banks[b.name] = labels.map((l,i)=>({period:l, value:s[i]}));
+    });
+    if(Object.keys(banks).length) dataSummary[mk] = {label:def.label, type:def.type, banks};
+  });
+
+  const prompt = `You are a banking equity analyst benchmarking a peer set. Data below (Rs Crore unless marked percent), periods ordered oldest to newest, last period is the latest print:
+
+${JSON.stringify(dataSummary)}
+
+Task: For the LATEST period only, for each metric and each bank, write a short reason (max 16 words) for that bank's value that explicitly references its standing vs the peers in this set (e.g. "leads peers as cost discipline holds NIM above 7%" or "lags on GNPA as legacy microfinance book still seasoning"). Skip a bank+metric only if there truly is nothing notable.
+
+Also write 5-6 concise board-ready bullets (max 18 words each) summarising overall peer positioning: who's winning on growth, profitability, asset quality, and returns, and why.
+
+Respond with ONLY valid JSON, no markdown fences, no preamble, in this exact shape:
+{"summary": ["bullet1","bullet2"], "metricInsights": {"<metricKey>": {"<bankName>":"reason text"}}}`;
+
+  async function callClaude(model){
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ model, max_tokens:1000, messages:[{role:"user", content:prompt}] })
+    });
+    let data;
+    try{ data = await response.json(); }catch(e){ throw new Error(`HTTP ${response.status} — non-JSON response`); }
+    if(!response.ok || data.error){
+      const detail = (data && (data.error?.message || data.message)) || `HTTP ${response.status}`;
+      throw new Error(detail);
+    }
+    return data;
+  }
+
+  try{
+    let data;
+    try{
+      data = await callClaude("claude-sonnet-5");
+    }catch(primaryErr){
+      console.warn('claude-sonnet-5 failed, retrying with claude-sonnet-4-6:', primaryErr.message);
+      data = await callClaude("claude-sonnet-4-6");
+    }
+    const text = (data.content||[]).map(b=>b.text||'').join('\n');
+    const clean = text.replace(/```json|```/g,'').trim();
+    const parsed = JSON.parse(clean);
+    STATE.aiInsights = parsed.metricInsights || {};
+    STATE.aiSummary = parsed.summary || [];
+    status.className='status ok'; status.textContent='✓ AI peer insights ready — captured below and across the charts, or export the deck.';
+    renderCharts(); renderSummary(); renderAiLog();
+    document.getElementById('exportBtn').classList.remove('hidden'); document.getElementById('exportPdfBtn').classList.remove('hidden');
+  }catch(err){
+    console.error(err);
+    status.className='status err'; status.textContent='Could not generate AI insights: '+err.message+'. Charts still work with computed deltas — try the button again in a moment.';
+    document.getElementById('exportBtn').classList.remove('hidden'); document.getElementById('exportPdfBtn').classList.remove('hidden');
+  } finally { btn.disabled=false; btn.textContent='✦ Generate AI peer insights'; }
+}
+
+function renderSummary(){
+  const panel = document.getElementById('summaryPanel');
+  const list = document.getElementById('summaryList');
+  const labels = unionPeriods(STATE.mode);
+  document.getElementById('dashSub').textContent = `${STATE.banks.map(b=>b.name).join(' · ')} — as of ${labels[labels.length-1]||''}`;
+  const summaryNow = effectiveSummary();
+  if(!summaryNow || summaryNow.length===0){ panel.style.display='none'; return; }
+  panel.style.display='block';
+  list.innerHTML = summaryNow.map(b=>`<li>${b}</li>`).join('');
+}
+
+function renderAiLog(){
+  const panel = document.getElementById('aiLogPanel');
+  const list = document.getElementById('aiLogList');
+  const insightsForLog = effectiveInsights();
+  if(!insightsForLog || Object.keys(insightsForLog).length===0){ panel.style.display='none'; return; }
+  panel.style.display='block';
+  let html = '';
+  METRIC_DEFS.forEach(def=>{
+    const entries = insightsForLog[def.key];
+    if(!entries || Object.keys(entries).length===0) return;
+    html += `<div class="ai-log-group"><div class="mtitle">${def.label}</div>`;
+    STATE.banks.forEach(b=>{
+      const text = entries[b.name];
+      if(!text) return;
+      html += `<div class="ai-log-entry"><div class="bk">${b.name}</div><div class="tx">${text}</div></div>`;
+    });
+    html += `</div>`;
+  });
+  list.innerHTML = html || '<div style="color:var(--muted); font-size:12.5px;">No notable moves flagged this period.</div>';
+}
+
+// ---------- Export ----------
+// ================= MiniPdf: self-contained .pdf writer (no external library) =================
+// A hand-built PDF generator using only browser-native APIs. PDF's page/content-stream model is
+// simpler and more forgiving than OOXML, and doesn't depend on any office application to open —
+// every modern browser and OS renders PDFs natively.
+(function(){
+  const PT_W = 960, PT_H = 540; // 13.333in x 7.5in @ 72pt/in — matches the pptx widescreen size
+  const enc = new TextEncoder();
+
+  function sanitizeText(s){
+    return String(s===undefined||s===null?'':s)
+      .replace(/[\u2018\u2019]/g, "'").replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2013\u2014]/g, '-').replace(/\u2026/g, '...')
+      .replace(/[\u2022\u25AA\u2726\u2727\u2728\u2606\u2605]/g, '*')
+      .replace(/[\u2713\u2714]/g, '')
+      .replace(/\u20B9/g, 'Rs.')
+      .replace(/\u2019/g, "'")
+      .replace(/[^\x20-\x7E]/g, '?'); // strip anything outside printable ASCII (safe with base-14 fonts, no embedding needed)
+  }
+  function pdfLit(s){ return '(' + sanitizeText(s).replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)') + ')'; }
+  function wrapText(text, maxChars){
+    const words = sanitizeText(text).split(/\s+/);
+    const lines = []; let line = '';
+    words.forEach(w=>{
+      const test = line ? line+' '+w : w;
+      if(test.length > maxChars && line){ lines.push(line); line = w; } else { line = test; }
+    });
+    if(line) lines.push(line);
+    return lines;
+  }
+  function runLengthEncode(bytes){
+    const out = []; let i=0; const n=bytes.length;
+    while(i<n){
+      let runLen=1;
+      while(i+runLen<n && bytes[i+runLen]===bytes[i] && runLen<128) runLen++;
+      if(runLen>=2){ out.push(257-runLen); out.push(bytes[i]); i+=runLen; }
+      else{
+        let start=i, litLen=0;
+        while(i<n && litLen<128){ if(i+1<n && bytes[i]===bytes[i+1]) break; litLen++; i++; }
+        if(litLen===0){ litLen=1; i++; }
+        out.push(litLen-1);
+        for(let k=0;k<litLen;k++) out.push(bytes[start+k]);
+      }
+    }
+    out.push(128);
+    return new Uint8Array(out);
+  }
+  const HEX = c => Math.round(Math.max(0,Math.min(1,c))*255).toString(16).padStart(2,'0');
+  function hexToRgb01(hex){
+    hex = (hex||'000000').replace('#','');
+    return [parseInt(hex.slice(0,2),16)/255, parseInt(hex.slice(2,4),16)/255, parseInt(hex.slice(4,6),16)/255];
+  }
+
+  class MiniPdf {
+    constructor(){ this.pages = []; }
+    addPage(){
+      const page = { ops: [], images: [] };
+      this.pages.push(page);
+      const self = this;
+      return {
+        addTitle(text, x, y, size){ page.ops.push({t:'text', text, x, y, size, font:'F2', color:[0.93,0.94,0.96]}); },
+        addText(text, x, y, size, opts){
+          opts = opts||{};
+          page.ops.push({t:'text', text, x, y, size, font: opts.bold?'F2':(opts.mono?'F3':'F1'), color: opts.color?hexToRgb01(opts.color):[0.93,0.94,0.96]});
+        },
+        addWrapped(text, x, y, size, maxChars, lineHeight, opts){
+          opts = opts||{};
+          const lines = wrapText(text, maxChars);
+          lines.forEach((l,i)=> page.ops.push({t:'text', text:l, x, y: y-i*lineHeight, size, font: opts.bold?'F2':(opts.mono?'F3':'F1'), color: opts.color?hexToRgb01(opts.color):[0.93,0.94,0.96]}));
+          return y - lines.length*lineHeight;
+        },
+        addRect(x,y,w,h,color){ page.ops.push({t:'rect', x,y,w,h, color:hexToRgb01(color)}); },
+        addLine(x1,y1,x2,y2,color,width){ page.ops.push({t:'line', x1,y1,x2,y2, color:hexToRgb01(color), width:width||1}); },
+        addImageFromCanvas(canvas, x, y, w, h){
+          try{
+            const maxW = 620, maxH = 360;
+            const off = document.createElement('canvas');
+            const scale = Math.min(1, maxW/canvas.width, maxH/canvas.height);
+            off.width = Math.max(1,Math.round(canvas.width*scale));
+            off.height = Math.max(1,Math.round(canvas.height*scale));
+            const octx = off.getContext('2d');
+            octx.drawImage(canvas, 0,0, off.width, off.height);
+            const imgData = octx.getImageData(0,0,off.width,off.height).data;
+            const rgb = new Uint8Array(off.width*off.height*3);
+            for(let i=0,j=0;i<imgData.length;i+=4,j+=3){ rgb[j]=imgData[i]; rgb[j+1]=imgData[i+1]; rgb[j+2]=imgData[i+2]; }
+            const img = {w:off.width, h:off.height, rgb: runLengthEncode(rgb)};
+            page.images.push(img);
+            page.ops.push({t:'image', img, x, y, w, h});
+          }catch(e){ /* skip image if canvas isn't readable for any reason */ }
+        },
+      };
+    }
+    async getBlob(){
+      const chunks = []; let offset = 0;
+      const offsets = [];
+      function push(str){ const b = typeof str==='string' ? enc.encode(str) : str; chunks.push(b); offset += b.length; }
+      function beginObj(id){ offsets[id] = offset; push(`${id} 0 obj\n`); }
+      function endObj(){ push('endobj\n'); }
+
+      // Object numbering plan: 1=Catalog, 2=Pages, then per page: page obj, content stream obj, image objs
+      const pageCount = this.pages.length;
+      let nextId = 3;
+      const pageObjIds = [];
+      const contentObjIds = [];
+      const imageObjIdsPerPage = [];
+      this.pages.forEach(p=>{
+        pageObjIds.push(nextId++);
+        contentObjIds.push(nextId++);
+        const imgIds = p.images.map(()=> nextId++);
+        imageObjIdsPerPage.push(imgIds);
+      });
+      const fontF1 = nextId++, fontF2 = nextId++, fontF3 = nextId++;
+
+      push('%PDF-1.4\n%\xE2\xE3\xCF\xD3\n');
+
+      beginObj(1);
+      push(`<< /Type /Catalog /Pages 2 0 R >>\n`);
+      endObj();
+
+      beginObj(2);
+      push(`<< /Type /Pages /Kids [${pageObjIds.map(id=>id+' 0 R').join(' ')}] /Count ${pageCount} >>\n`);
+      endObj();
+
+      this.pages.forEach((p, idx)=>{
+        const pageId = pageObjIds[idx];
+        const contentId = contentObjIds[idx];
+        const imgIds = imageObjIdsPerPage[idx];
+
+        // Build content stream
+        let cs = '';
+        p.ops.forEach(op=>{
+          if(op.t==='text'){
+            cs += `q ${op.color[0].toFixed(3)} ${op.color[1].toFixed(3)} ${op.color[2].toFixed(3)} rg BT /${op.font} ${op.size} Tf ${op.x.toFixed(2)} ${op.y.toFixed(2)} Td ${pdfLit(op.text)} Tj ET Q\n`;
+          } else if(op.t==='rect'){
+            cs += `q ${op.color[0].toFixed(3)} ${op.color[1].toFixed(3)} ${op.color[2].toFixed(3)} rg ${op.x.toFixed(2)} ${op.y.toFixed(2)} ${op.w.toFixed(2)} ${op.h.toFixed(2)} re f Q\n`;
+          } else if(op.t==='line'){
+            cs += `q ${op.color[0].toFixed(3)} ${op.color[1].toFixed(3)} ${op.color[2].toFixed(3)} RG ${op.width} w ${op.x1.toFixed(2)} ${op.y1.toFixed(2)} m ${op.x2.toFixed(2)} ${op.y2.toFixed(2)} l S Q\n`;
+          } else if(op.t==='image'){
+            const ii = p.images.indexOf(op.img);
+            cs += `q ${op.w.toFixed(2)} 0 0 ${op.h.toFixed(2)} ${op.x.toFixed(2)} ${op.y.toFixed(2)} cm /Im${ii} Do Q\n`;
+          }
+        });
+
+        const xObjEntries = imgIds.map((id,i)=> `/Im${i} ${id} 0 R`).join(' ');
+        beginObj(pageId);
+        push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PT_W} ${PT_H}] /Resources << /Font << /F1 ${fontF1} 0 R /F2 ${fontF2} 0 R /F3 ${fontF3} 0 R >> /XObject << ${xObjEntries} >> >> /Contents ${contentId} 0 R >>\n`);
+        endObj();
+
+        const csBytes = enc.encode(cs);
+        beginObj(contentId);
+        push(`<< /Length ${csBytes.length} >>\nstream\n`);
+        push(csBytes);
+        push('\nendstream\n');
+        endObj();
+
+        p.images.forEach((img, i)=>{
+          beginObj(imgIds[i]);
+          push(`<< /Type /XObject /Subtype /Image /Width ${img.w} /Height ${img.h} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /RunLengthDecode /Length ${img.rgb.length} >>\nstream\n`);
+          push(img.rgb);
+          push('\nendstream\n');
+          endObj();
+        });
+      });
+
+      beginObj(fontF1); push(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>\n`); endObj();
+      beginObj(fontF2); push(`<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>\n`); endObj();
+      beginObj(fontF3); push(`<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>\n`); endObj();
+
+      const xrefStart = offset;
+      const totalObjs = fontF3;
+      push(`xref\n0 ${totalObjs+1}\n`);
+      push('0000000000 65535 f \n');
+      for(let id=1; id<=totalObjs; id++){
+        push(String(offsets[id]).padStart(10,'0') + ' 00000 n \n');
+      }
+      push(`trailer\n<< /Size ${totalObjs+1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF`);
+
+      let total=0; chunks.forEach(c=>total+=c.length);
+      const out = new Uint8Array(total); let pos=0;
+      chunks.forEach(c=>{ out.set(c,pos); pos+=c.length; });
+      return new Blob([out], {type:'application/pdf'});
+    }
+    async writeFile({fileName}){
+      const blob = await this.getBlob();
+      downloadBlobRobustly(blob, fileName || 'document.pdf');
+    }
+  }
+  window.MiniPdf = MiniPdf;
+})();
+
+// ================= MiniPptx: self-contained .pptx writer (no external library) =================
+// Builds a real OOXML PowerPoint file (a ZIP of XML parts) using only browser-native APIs
+// (TextEncoder, DataView, Blob). Implements just the subset of the PptxGenJS API this app
+// uses — addSlide/addText/addShape/addImage/addTable/writeFile — as a drop-in replacement.
+(function(){
+  const EMU = 914400; // EMU per inch
+  const IN = (v)=> Math.round((v||0) * EMU);
+  const esc = (s)=> String(s===undefined||s===null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const hex = (c)=> (c||'000000').replace('#','');
+
+  // ---------- ZIP (store method, no compression — fully valid per the ZIP spec) ----------
+  const CRC_TABLE = (()=>{ const t=[]; for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++){ c = (c&1)?(0xEDB88320 ^ (c>>>1)):(c>>>1); } t[n]=c>>>0; } return t; })();
+  function crc32(bytes){ let crc = 0xFFFFFFFF; for(let i=0;i<bytes.length;i++){ crc = (crc>>>8) ^ CRC_TABLE[(crc ^ bytes[i]) & 0xFF]; } return (crc ^ 0xFFFFFFFF) >>> 0; }
+  function buildZip(files){
+    const enc = new TextEncoder();
+    const localParts = [], centralParts = [];
+    let offset = 0;
+    files.forEach(f=>{
+      const nameBytes = enc.encode(f.name);
+      const data = f.data;
+      const crc = crc32(data), size = data.length;
+      const lh = new Uint8Array(30 + nameBytes.length);
+      const dv = new DataView(lh.buffer);
+      dv.setUint32(0,0x04034b50,true); dv.setUint16(4,20,true); dv.setUint16(6,0,true); dv.setUint16(8,0,true);
+      dv.setUint16(10,0,true); dv.setUint16(12,0,true); dv.setUint32(14,crc,true);
+      dv.setUint32(18,size,true); dv.setUint32(22,size,true);
+      dv.setUint16(26,nameBytes.length,true); dv.setUint16(28,0,true);
+      lh.set(nameBytes,30);
+      localParts.push(lh, data);
+
+      const ch = new Uint8Array(46 + nameBytes.length);
+      const cdv = new DataView(ch.buffer);
+      cdv.setUint32(0,0x02014b50,true); cdv.setUint16(4,20,true); cdv.setUint16(6,20,true); cdv.setUint16(8,0,true);
+      cdv.setUint16(10,0,true); cdv.setUint16(12,0,true); cdv.setUint16(14,0,true); cdv.setUint32(16,crc,true);
+      cdv.setUint32(20,size,true); cdv.setUint32(24,size,true);
+      cdv.setUint16(28,nameBytes.length,true); cdv.setUint16(30,0,true); cdv.setUint16(32,0,true);
+      cdv.setUint16(34,0,true); cdv.setUint16(36,0,true); cdv.setUint32(38,0,true);
+      cdv.setUint32(42,offset,true);
+      ch.set(nameBytes,46);
+      centralParts.push(ch);
+      offset += lh.length + data.length;
+    });
+    const centralOffset = offset;
+    let centralSize = 0; centralParts.forEach(p=> centralSize+=p.length);
+    const eocd = new Uint8Array(22);
+    const edv = new DataView(eocd.buffer);
+    edv.setUint32(0,0x06054b50,true); edv.setUint16(4,0,true); edv.setUint16(6,0,true);
+    edv.setUint16(8,files.length,true); edv.setUint16(10,files.length,true);
+    edv.setUint32(12,centralSize,true); edv.setUint32(16,centralOffset,true); edv.setUint16(20,0,true);
+    const all = [...localParts, ...centralParts, eocd];
+    let total=0; all.forEach(p=>total+=p.length);
+    const out = new Uint8Array(total); let pos=0;
+    all.forEach(p=>{ out.set(p,pos); pos+=p.length; });
+    return out;
+  }
+  function textFile(str){ return new TextEncoder().encode(str); }
+  function dataURLToBytes(dataURL){
+    const base64 = dataURL.split(',')[1] || '';
+    const bin = atob(base64);
+    const bytes = new Uint8Array(bin.length);
+    for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  // ---------- Static OOXML boilerplate ----------
+  const THEME_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Ledger"><a:themeElements>
+<a:clrScheme name="Ledger"><a:dk1><a:srgbClr val="000000"/></a:dk1><a:lt1><a:srgbClr val="FFFFFF"/></a:lt1>
+<a:dk2><a:srgbClr val="0A0D16"/></a:dk2><a:lt2><a:srgbClr val="EDEFF5"/></a:lt2>
+<a:accent1><a:srgbClr val="C9A24B"/></a:accent1><a:accent2><a:srgbClr val="5B8DEF"/></a:accent2>
+<a:accent3><a:srgbClr val="3FBF7F"/></a:accent3><a:accent4><a:srgbClr val="E5555A"/></a:accent4>
+<a:accent5><a:srgbClr val="7B5BEF"/></a:accent5><a:accent6><a:srgbClr val="4FC3D9"/></a:accent6>
+<a:hlink><a:srgbClr val="5B8DEF"/></a:hlink><a:folHlink><a:srgbClr val="7B5BEF"/></a:folHlink></a:clrScheme>
+<a:fontScheme name="Ledger"><a:majorFont><a:latin typeface="Georgia"/><a:ea typeface=""/><a:cs typeface=""/></a:majorFont>
+<a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:minorFont></a:fontScheme>
+<a:fmtScheme name="Ledger"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:fillStyleLst>
+<a:lnStyleLst><a:ln w="6350"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="12700"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln><a:ln w="19050"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:ln></a:lnStyleLst>
+<a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst>
+<a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:solidFill><a:schemeClr val="phClr"/></a:solidFill></a:bgFillStyleLst>
+</a:fmtScheme></a:themeElements></a:theme>`;
+
+  const SLIDE_MASTER_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldMaster xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+<p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="0A0D16"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>
+<p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld>
+<p:clrMap bg1="lt1" tx1="dk1" bg2="lt2" tx2="dk2" accent1="accent1" accent2="accent2" accent3="accent3" accent4="accent4" accent5="accent5" accent6="accent6" hlink="hlink" folHlink="folHlink"/>
+<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst></p:sldMaster>`;
+
+  const SLIDE_MASTER_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme" Target="../theme/theme1.xml"/>
+</Relationships>`;
+
+  const SLIDE_LAYOUT_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sldLayout xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" type="blank" preserve="1">
+<p:cSld name="Blank"><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr></p:spTree></p:cSld>
+<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>`;
+
+  const SLIDE_LAYOUT_RELS = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="../slideMasters/slideMaster1.xml"/>
+</Relationships>`;
+
+  const CORE_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<dc:title>Board Deck</dc:title><dc:creator>Ledger</dc:creator><cp:revision>1</cp:revision></cp:coreProperties>`;
+
+  function appXml(n){ return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+<Application>Ledger</Application><Slides>${n}</Slides></Properties>`; }
+
+  // ---------- Shape/text/table XML builders ----------
+  let shapeId = 1;
+  function textBoxXml(text, opts){
+    opts = opts || {};
+    const id = ++shapeId;
+    const runs = Array.isArray(text) ? text : [{text, options:opts}];
+    const paras = runs.map(r=>{
+      const o = r.options || opts;
+      const sz = Math.round((o.fontSize||opts.fontSize||14)*100);
+      const bold = (o.bold||opts.bold) ? '1':'0';
+      const color = hex(o.color||opts.color||'000000');
+      const font = o.fontFace||opts.fontFace;
+      const bullet = o.bullet ? '\u25AA ' : '';
+      const spcAft = o.paraSpaceAfter ? `<a:spcAft><a:spcPts val="${Math.round(o.paraSpaceAfter*100)}"/></a:spcAft>` : '';
+      return `<a:p><a:pPr>${spcAft}</a:pPr><a:r><a:rPr lang="en-US" sz="${sz}" b="${bold}" dirty="0">`+
+        `<a:solidFill><a:srgbClr val="${color}"/></a:solidFill>`+
+        (font?`<a:latin typeface="${esc(font)}"/>`:'')+
+        `</a:rPr><a:t>${esc(bullet + (r.text||''))}</a:t></a:r></a:p>`;
+    }).join('');
+    const valign = opts.valign==='top' ? 'anchor="t"' : '';
+    return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="TextBox ${id}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="${IN(opts.x)}" y="${IN(opts.y)}"/><a:ext cx="${IN(opts.w||1)}" cy="${IN(opts.h||1)}"/></a:xfrm>
+<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>
+<p:txBody><a:bodyPr wrap="square" ${valign}><a:normAutofit/></a:bodyPr><a:lstStyle/>${paras}</p:txBody></p:sp>`;
+  }
+  function shapeXml(kind, opts){
+    opts = opts || {};
+    const id = ++shapeId;
+    const fill = opts.fill && opts.fill.color ? `<a:solidFill><a:srgbClr val="${hex(opts.fill.color)}"/></a:solidFill>` : '<a:noFill/>';
+    const lnColor = (opts.line && opts.line.color) ? hex(opts.line.color) : null;
+    const lnW = opts.line && opts.line.width ? Math.round(opts.line.width*12700) : 12700;
+    const ln = lnColor ? `<a:ln w="${lnW}"><a:solidFill><a:srgbClr val="${lnColor}"/></a:solidFill></a:ln>` : '<a:ln><a:noFill/></a:ln>';
+    const prst = kind==='line' ? 'line' : 'rect';
+    return `<p:sp><p:nvSpPr><p:cNvPr id="${id}" name="Shape ${id}"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr>
+<p:spPr><a:xfrm><a:off x="${IN(opts.x)}" y="${IN(opts.y)}"/><a:ext cx="${IN(opts.w||0.01)}" cy="${IN(opts.h||0.01)}"/></a:xfrm>
+<a:prstGeom prst="${prst}"><a:avLst/></a:prstGeom>${fill}${ln}</p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`;
+  }
+  function tableXml(rows, opts){
+    opts = opts || {};
+    const id = ++shapeId;
+    const totalW = opts.w || 10;
+    const colW = opts.colW && opts.colW.length ? opts.colW : rows[0].map(()=> totalW/rows[0].length);
+    const rowH = 0.42;
+    const gridCols = colW.map(w=>`<a:gridCol w="${IN(w)}"/>`).join('');
+    const trs = rows.map(row=>{
+      const tcs = row.map(cell=>{
+        const c = (cell && typeof cell==='object') ? cell : {text:cell, options:{}};
+        const o = c.options || {};
+        const sz = Math.round((o.fontSize||opts.fontSize||12)*100);
+        const bold = o.bold ? '1':'0';
+        const color = hex(o.color||'000000');
+        const fill = o.fill && o.fill.color ? `<a:solidFill><a:srgbClr val="${hex(o.fill.color)}"/></a:solidFill>` : '<a:noFill/>';
+        return `<a:tc><a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:rPr sz="${sz}" b="${bold}"><a:solidFill><a:srgbClr val="${color}"/></a:solidFill></a:rPr><a:t>${esc(c.text)}</a:t></a:r></a:p></a:txBody><a:tcPr marL="45720" marR="45720" marT="22860" marB="22860" anchor="ctr">${fill}</a:tcPr></a:tc>`;
+      }).join('');
+      return `<a:tr h="${IN(rowH)}">${tcs}</a:tr>`;
+    }).join('');
+    return `<p:graphicFrame><p:nvGraphicFramePr><p:cNvPr id="${id}" name="Table ${id}"/><p:cNvGraphicFramePr/><p:nvPr/></p:nvGraphicFramePr>
+<p:xfrm><a:off x="${IN(opts.x)}" y="${IN(opts.y)}"/><a:ext cx="${IN(totalW)}" cy="${IN(rowH*rows.length)}"/></p:xfrm>
+<a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/table"><a:tbl><a:tblPr firstRow="1" bandRow="0"/><a:tblGrid>${gridCols}</a:tblGrid>${trs}</a:tbl></a:graphicData></a:graphic></p:graphicFrame>`;
+  }
+
+  class MiniPptx {
+    constructor(){ this.slides = []; this._layout = null; }
+    defineLayout(){ /* always widescreen 13.33x7.5in — no-op */ }
+    set layout(v){ /* no-op */ }
+    get layout(){ return this._layout; }
+    addSlide(){
+      const shapes = [];
+      const slide = {
+        background: null,
+        _shapes: shapes,
+        addText(text, opts){ shapes.push({kind:'text', text, opts}); },
+        addShape(kind, opts){ shapes.push({kind:'autoshape', shapeKind:kind, opts}); },
+        addImage(opts){ shapes.push({kind:'image', opts}); },
+        addTable(rows, opts){ shapes.push({kind:'table', rows, opts}); },
+      };
+      this.slides.push(slide);
+      return slide;
+    }
+    async getBlob(){
+      const files = [];
+      const add = (name, content)=> files.push({name, data: typeof content==='string' ? textFile(content) : content});
+
+      add('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Default Extension="png" ContentType="image/png"/>
+<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>
+<Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/>
+<Override PartName="/ppt/slideLayouts/slideLayout1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideLayout+xml"/>
+<Override PartName="/ppt/theme/theme1.xml" ContentType="application/vnd.openxmlformats-officedocument.theme+xml"/>
+<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+${this.slides.map((_,i)=>`<Override PartName="/ppt/slides/slide${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('\n')}
+</Types>`);
+
+      add('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>
+<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+</Relationships>`);
+
+      add('docProps/core.xml', CORE_XML);
+      add('docProps/app.xml', appXml(this.slides.length));
+      add('ppt/theme/theme1.xml', THEME_XML);
+      add('ppt/slideMasters/slideMaster1.xml', SLIDE_MASTER_XML);
+      add('ppt/slideMasters/_rels/slideMaster1.xml.rels', SLIDE_MASTER_RELS);
+      add('ppt/slideLayouts/slideLayout1.xml', SLIDE_LAYOUT_XML);
+      add('ppt/slideLayouts/_rels/slideLayout1.xml.rels', SLIDE_LAYOUT_RELS);
+
+      add('ppt/presentation.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+<p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rIdM"/></p:sldMasterIdLst>
+<p:sldIdLst>${this.slides.map((_,i)=>`<p:sldId id="${256+i}" r:id="rId${i+1}"/>`).join('')}</p:sldIdLst>
+<p:sldSz cx="${IN(13.333)}" cy="${IN(7.5)}" type="screen16x9"/>
+<p:notesSz cx="${IN(7.5)}" cy="${IN(10)}"/>
+</p:presentation>`);
+
+      add('ppt/_rels/presentation.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rIdM" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/>
+${this.slides.map((_,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${i+1}.xml"/>`).join('\n')}
+</Relationships>`);
+
+      // Per-slide XML + media + rels
+      this.slides.forEach((slide, idx)=>{
+        const n = idx+1;
+        const bgColor = slide.background && slide.background.color ? hex(slide.background.color) : '0A0D16';
+        let imgCounter = 0;
+        const relEntries = [];
+        const shapeXmlParts = slide._shapes.map(s=>{
+          if(s.kind==='text') return textBoxXml(s.text, s.opts);
+          if(s.kind==='autoshape') return shapeXml(s.shapeKind, s.opts);
+          if(s.kind==='table') return tableXml(s.rows, s.opts);
+          if(s.kind==='image'){
+            imgCounter++;
+            const mediaName = `image_${n}_${imgCounter}.png`;
+            try{ add(`ppt/media/${mediaName}`, dataURLToBytes(s.opts.data)); }catch(e){ return ''; }
+            const rid = `rIdImg${imgCounter}`;
+            relEntries.push({id:rid, target:`../media/${mediaName}`});
+            const id = ++shapeId;
+            return `<p:pic><p:nvPicPr><p:cNvPr id="${id}" name="Picture ${id}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>
+<p:blipFill><a:blip r:embed="${rid}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>
+<p:spPr><a:xfrm><a:off x="${IN(s.opts.x)}" y="${IN(s.opts.y)}"/><a:ext cx="${IN(s.opts.w||4)}" cy="${IN(s.opts.h||3)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
+          }
+          return '';
+        }).join('\n');
+
+        add(`ppt/slides/slide${n}.xml`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">
+<p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="${bgColor}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>
+<p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>
+<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>
+${shapeXmlParts}
+</p:spTree></p:cSld></p:sld>`);
+
+        add(`ppt/slides/_rels/slide${n}.xml.rels`, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${relEntries.map(r=>`<Relationship Id="${r.id}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${r.target}"/>`).join('\n')}
+</Relationships>`);
+      });
+
+      const zipBytes = buildZip(files);
+      return new Blob([zipBytes], {type:'application/vnd.openxmlformats-officedocument.presentationml.presentation'});
+    }
+    async writeFile({fileName}){
+      const blob = await this.getBlob();
+      downloadBlobRobustly(blob, fileName || 'presentation.pptx');
+    }
+  }
+  window.MiniPptx = MiniPptx;
+})();
+
+// Shared, more direct download mechanism used by both the real PptxGenJS and the fallback engine.
+// Rather than relying on a library's own internal save routine (which can fail silently in some
+// mobile browsers), this explicitly navigates to the file so the browser's own native
+// download/save UI takes over — a materially different code path than a synthetic link click.
+function downloadBlobRobustly(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=> URL.revokeObjectURL(url), 60000);
+}
+
+async function exportDeckPDF(){
+  const status = document.getElementById('statusLine');
+  status.className='status'; status.textContent='Building PDF…';
+  const pdf = new MiniPdf();
+  const W = 960, H = 540, M = 40; // page pt size and margin
+  const topY = (inchesFromTop)=> H - inchesFromTop;
+  const labels = unionPeriods(STATE.mode); const latest = labels[labels.length-1];
+
+  // Title page
+  let p1 = pdf.addPage();
+  p1.addTitle('Peer Benchmarking', M, H-110, 32);
+  p1.addWrapped(STATE.banks.map(b=>b.name).join('  ·  '), M, H-150, 13, 120, 17, {color:'C9A24B'});
+  p1.addText(`Latest period: ${latest||''}`, M, H-190, 11, {color:'8A93AC'});
+  p1.addLine(M, H-210, M+300, H-210, 'C9A24B', 1.5);
+
+  // Summary page
+  const deckSummary = effectiveSummary();
+  if(deckSummary && deckSummary.length){
+    let sx = pdf.addPage();
+    sx.addTitle('Peer Takeaways', M, H-50, 22);
+    sx.addLine(M, H-64, M+90, H-64, 'C9A24B', 2);
+    let y = H-100;
+    deckSummary.forEach(b=>{ y = sx.addWrapped('* ' + b, M, y, 13, 115, 18) - 8; });
+  }
+
+  // Leaderboard — chunk banks into groups of 6 columns per page for readability
+  const bankChunks = [];
+  for(let i=0;i<STATE.banks.length;i+=6) bankChunks.push(STATE.banks.slice(i,i+6));
+  bankChunks.forEach((chunk, ci)=>{
+    let lb = pdf.addPage();
+    lb.addTitle(`Peer Leaderboard${bankChunks.length>1?` (${ci+1}/${bankChunks.length})`:''}`, M, H-50, 20);
+    lb.addText(`As of ${latest||''}`, M, H-70, 10, {color:'8A93AC'});
+    const colW = 18;
+    let ty = H-100;
+    lb.addText('Metric'.padEnd(20) + chunk.map(b=>b.name.slice(0,colW-1).padEnd(colW)).join(''), M, ty, 9, {mono:true, bold:true, color:'C9A24B'});
+    ty -= 18;
+    LB_METRICS.forEach(mk=>{
+      const def = METRIC_DEFS.find(d=>d.key===mk);
+      const vals = chunk.map(b=>{ const s=seriesForBank(b, mk, labels); return s? s[s.length-1]:null; });
+      const line = def.label.slice(0,19).padEnd(20) + vals.map(v=> fmt(v, def.type).padEnd(colW)).join('');
+      lb.addText(line, M, ty, 9, {mono:true});
+      ty -= 16;
+    });
+  });
+
+  // Per-metric chart pages
+  for(const def of METRIC_DEFS){
+    const chart = STATE.charts[def.key]; if(!chart) continue;
+    const canvasEl = document.getElementById('cv_'+def.key);
+    let cs = pdf.addPage();
+    cs.addTitle(def.label, M, H-40, 18);
+    cs.addText(`${def.section} — by bank, ${STATE.mode}`, M, H-58, 10, {color:'8A93AC'});
+    if(canvasEl) cs.addImageFromCanvas(canvasEl, M, H-370, 560, 300);
+    let notes = [];
+    STATE.banks.forEach(b=>{
+      const deckInsights = effectiveInsights();
+      const ai = deckInsights && deckInsights[def.key] && deckInsights[def.key][b.name];
+      if(ai) notes.push(`${b.name}: ${ai}`);
+      else { const s=seriesForBank(b, def.key, labels); if(s){ const dt=deltaText(s, s.length-1); if(dt) notes.push(`${b.name}: ${dt}`); } }
+    });
+    if(notes.length){
+      cs.addText(`AS OF ${latest||''}`, 620, H-90, 9, {bold:true, color:'C9A24B'});
+      let ny = H-108;
+      notes.forEach(n=>{ ny = cs.addWrapped('- '+n, 620, ny, 9, 44, 12) - 4; });
+    }
+  }
+
+  // AI Insight Log appendix
+  const appendixInsights = effectiveInsights();
+  if(appendixInsights && Object.keys(appendixInsights).length){
+    let logRows = [];
+    METRIC_DEFS.forEach(def=>{
+      const entries = appendixInsights[def.key];
+      if(!entries) return;
+      STATE.banks.forEach(b=>{ const text = entries[b.name]; if(text) logRows.push([def.label, b.name, text]); });
+    });
+    const CHUNK = 10;
+    for(let i=0;i<logRows.length;i+=CHUNK){
+      const chunk = logRows.slice(i, i+CHUNK);
+      let ap = pdf.addPage();
+      ap.addTitle(`AI Insight Log${logRows.length>CHUNK?` (${Math.floor(i/CHUNK)+1}/${Math.ceil(logRows.length/CHUNK)})`:''}`, M, H-40, 18);
+      let ry = H-70;
+      chunk.forEach(r=>{
+        ry = ap.addWrapped(`${r[0]} | ${r[1]}: ${r[2]}`, M, ry, 10, 130, 13) - 6;
       });
     }
   }
 
-  showPersona(originalActive);
-  btn.textContent = originalBtnText; btn.disabled = false;
-  doc.save(`${coShort.replace(/\s+/g,'-')}-dashboard.pdf`);
+  const filename = 'Peer_Benchmark_Board_Deck.pdf';
+  const blob = await pdf.getBlob();
+  downloadBlobRobustly(blob, filename);
+  status.className='status ok'; status.textContent = `✓ Downloaded ${filename}`;
 }
 
-document.getElementById('exportXlsxBtn').addEventListener('click', exportExcel);
+async function exportDeck(){
+  const status = document.getElementById('statusLine');
+  status.className='status'; status.textContent='Building PowerPoint…';
+  const usingFallback = typeof PptxGenJS === 'undefined';
+  const pptx = usingFallback ? new MiniPptx() : new PptxGenJS();
+  pptx.defineLayout({name:'WIDE', width:13.33, height:7.5}); pptx.layout='WIDE';
+  const GOLD='C9A24B', DARK='0A0D16', PANEL='171C33', TEXT='EDEFF5', MUTED='8A93AC';
+  const labels = unionPeriods(STATE.mode); const latest = labels[labels.length-1];
 
-function sheetFromDict(labelMap, dict, periods){
-  const rows = [['Metric', ...(periods||[])]];
-  Object.keys(labelMap).forEach(k=>{
-    if(dict && dict[k]) rows.push([labelMap[k], ...dict[k]]);
+  let s = pptx.addSlide(); s.background={color:DARK};
+  s.addText('Peer Benchmarking', {x:0.7,y:2.5,w:11.9,h:1,fontSize:38,bold:true,color:TEXT});
+  s.addText(STATE.banks.map(b=>b.name).join('  ·  '), {x:0.7,y:3.4,w:11.9,h:0.8,fontSize:16,color:GOLD});
+  s.addText(`Latest period: ${latest||''}`, {x:0.7,y:4.0,w:11.9,h:0.5,fontSize:13,color:MUTED});
+  s.addShape('line',{x:0.7,y:4.7,w:5,h:0,line:{color:GOLD,width:1.5}});
+
+  const deckSummary = effectiveSummary();
+  if(deckSummary && deckSummary.length){
+    let sx = pptx.addSlide(); sx.background={color:DARK};
+    sx.addText('Peer Takeaways', {x:0.6,y:0.4,w:12,h:0.6,fontSize:24,bold:true,color:TEXT});
+    sx.addShape('line',{x:0.6,y:1.0,w:2,h:0,line:{color:GOLD,width:2}});
+    sx.addText(deckSummary.map(b=>({text:b, options:{bullet:{code:'25AA'}, color:TEXT, fontSize:16, breakLine:true, paraSpaceAfter:14}})), {x:0.7,y:1.4,w:11.9,h:5.5,valign:'top'});
+  }
+
+  // Leaderboard slide
+  let lb = pptx.addSlide(); lb.background={color:DARK};
+  lb.addText('Peer Leaderboard', {x:0.6,y:0.4,w:12,h:0.6,fontSize:24,bold:true,color:TEXT});
+  lb.addText(`As of ${latest||''}`, {x:0.6,y:0.9,w:12,h:0.4,fontSize:12,color:MUTED});
+  const rows = [ ['Metric', ...STATE.banks.map(b=>b.name)].map(h=>({text:h, options:{bold:true, color:GOLD, fill:{color:PANEL}}})) ];
+  LB_METRICS.forEach(mk=>{
+    const def = METRIC_DEFS.find(d=>d.key===mk);
+    const vals = STATE.banks.map(b=>{ const s=seriesForBank(b, mk, labels); return s? s[s.length-1]:null; });
+    const valid = vals.filter(v=>v!==null&&v!==undefined);
+    const lowerBetter = LOWER_IS_BETTER.has(mk);
+    const best = valid.length? (lowerBetter?Math.min(...valid):Math.max(...valid)) : null;
+    rows.push([{text:def.label, options:{color:TEXT, fill:{color:'0D1120'}}}, ...vals.map(v=>({
+      text: fmt(v, def.type), options:{color: (v===best && valid.length>1)?'3FBF7F':TEXT, fill:{color:'0D1120'}, bold:(v===best&&valid.length>1)}
+    }))]);
   });
-  return XLSX.utils.aoa_to_sheet(rows);
-}
+  lb.addTable(rows, {x:0.6,y:1.5,w:12.1,fontSize:12,border:{color:'2A3155',pt:0.5},autoPage:false,colW:[3.4, ...STATE.banks.map(()=> (12.1-3.4)/STATE.banks.length)]});
 
-function exportExcel(){
-  if(!financials){ return; }
-  const f = financials;
-  const coShort = shortCompanyName(f.co || 'company');
-  const wb = XLSX.utils.book_new();
+  for(const def of METRIC_DEFS){
+    const chart = STATE.charts[def.key]; if(!chart) continue;
+    let cs = pptx.addSlide(); cs.background={color:DARK};
+    cs.addText(def.label, {x:0.6,y:0.35,w:12,h:0.5,fontSize:22,bold:true,color:TEXT});
+    cs.addText(`${def.section} — by bank, ${STATE.mode}`, {x:0.6,y:0.82,w:12,h:0.35,fontSize:12,color:MUTED});
+    try{ cs.addImage({data:chart.toBase64Image(), x:0.6,y:1.3,w:8.2,h:4.6}); }catch(e){}
+    let notes = [];
+    STATE.banks.forEach(b=>{
+      const deckInsights = effectiveInsights();
+      const ai = deckInsights && deckInsights[def.key] && deckInsights[def.key][b.name];
+      if(ai) notes.push(`${b.name}: ${ai}`);
+      else { const s=seriesForBank(b, def.key, labels); if(s){ const dt=deltaText(s, s.length-1); if(dt) notes.push(`${b.name}: ${dt}`); } }
+    });
+    if(notes.length){
+      cs.addShape('rect',{x:9.0,y:1.3,w:3.7,h:4.6,fill:{color:PANEL},line:{color:'2A3155'}});
+      cs.addText(`AS OF ${latest||''}`, {x:9.25,y:1.5,w:3.2,h:0.3,fontSize:10,color:GOLD,bold:true});
+      cs.addText(notes.map(n=>({text:n, options:{bullet:{code:'2022'}, color:TEXT, fontSize:10.5, breakLine:true, paraSpaceAfter:9}})), {x:9.25,y:1.9,w:3.2,h:3.8,valign:'top'});
+    }
+  }
 
-  XLSX.utils.book_append_sheet(wb, sheetFromDict(
-    {rev:'Revenue', cogs:'Cost of revenue (delivery)', gp:'Gross profit', opex:'Other operating expense', ebitda:'EBITDA', ni:'Net income'},
-    f.is, f.p), 'Income Statement');
+  // AI Insight Log appendix — full text record, chunked into slides of ~14 rows each
+  const appendixInsights = effectiveInsights();
+  if(appendixInsights && Object.keys(appendixInsights).length){
+    let logRows = [];
+    METRIC_DEFS.forEach(def=>{
+      const entries = appendixInsights[def.key];
+      if(!entries) return;
+      STATE.banks.forEach(b=>{
+        const text = entries[b.name];
+        if(text) logRows.push([def.label, b.name, text]);
+      });
+    });
+    const CHUNK = 14;
+    for(let i=0; i<logRows.length; i+=CHUNK){
+      const chunk = logRows.slice(i, i+CHUNK);
+      let ap = pptx.addSlide(); ap.background={color:DARK};
+      ap.addText(`AI Insight Log${logRows.length>CHUNK?' ('+(Math.floor(i/CHUNK)+1)+'/'+Math.ceil(logRows.length/CHUNK)+')':''}`, {x:0.6,y:0.35,w:12,h:0.5,fontSize:22,bold:true,color:TEXT});
+      ap.addText(`Full reasoning record — as of ${latest||''}`, {x:0.6,y:0.82,w:12,h:0.35,fontSize:12,color:MUTED});
+      const tRows = [ ['Metric','Bank','Insight'].map(h=>({text:h, options:{bold:true, color:GOLD, fill:{color:PANEL}}})),
+        ...chunk.map(r=>r.map((c,ci)=>({text:c, options:{color:TEXT, fill:{color:'0D1120'}, fontSize:10.5, valign:'top'}}))) ];
+      ap.addTable(tRows, {x:0.6,y:1.35,w:12.1,border:{color:'2A3155',pt:0.5},autoPage:false,colW:[2.6,2.6,6.9]});
+    }
+  }
 
-  XLSX.utils.book_append_sheet(wb, sheetFromDict(
-    {ca:'Current assets', cl:'Current liabilities', ta:'Total assets', tl:'Total liabilities', te:'Total equity', cash:'Cash', inv:'Inventory', debt:'Debt'},
-    f.bs, f.pBS || f.p), 'Balance Sheet');
-
-  XLSX.utils.book_append_sheet(wb, sheetFromDict(
-    {ocf:'Operating cash flow', icf:'Investing cash flow', fcf:'Financing cash flow', fcfree:'Free cash flow'},
-    f.cf, f.p), 'Cash Flow');
-
-  XLSX.utils.book_append_sheet(wb, sheetFromDict(
-    {gm:'Gross margin %', nm:'Net margin %', cr:'Current ratio', qr:'Quick ratio', de:'Debt / equity', roe:'ROE %', roa:'ROA %', ic:'Interest coverage x'},
-    f.r, f.p), 'Ratios');
-
-  const vRows = [['Metric','Period','Variance note']];
-  Object.keys(f.v || {}).forEach(k=>{
-    const arr = f.v[k] || [];
-    const periods = (f.pBS && arr.length === f.pBS.length) ? f.pBS : f.p;
-    arr.forEach((note, i)=> vRows.push([k, (periods||[])[i] || '', note]));
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(vRows), 'Variance notes');
-
-  const flagRows = [['Flag']];
-  (f.flags||[]).forEach(x=>flagRows.push([x]));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(flagRows), 'Auditor flags');
-
-  const sumRows = [['Audience','Narrative']];
-  Object.entries(f.sum||{}).forEach(([k,v])=>sumRows.push([k,v]));
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sumRows), 'Summaries');
-
-  XLSX.writeFile(wb, `${coShort.replace(/\s+/g,'-')}-financial-model.xlsx`);
-}
-
-function clearData(){
-  financials = null;
-  uploadedFiles = [];
-  Object.keys(charts).forEach(id=>destroy(id));
-  renderFileList();
-  document.getElementById('shell').classList.remove('active');
-  document.getElementById('stage').style.display = 'block';
-  document.getElementById('tsBox').textContent = 'No statements analyzed yet';
-  document.title = 'Financial Intelligence';
-  const appTitleMeta = document.getElementById('appTitleMeta');
-  if(appTitleMeta) appTitleMeta.setAttribute('content', 'Financial Intel');
-  document.getElementById('statusText').textContent = '';
-  document.getElementById('sourceBadge').textContent = '';
-}
-
-async function analyze(){
-  const ready = uploadedFiles.filter(f=>f.status==='ready');
-  if(ready.length===0) return;
-  analyzeBtn.disabled = true;
-  statusText.innerHTML = '<span class="spinner"></span> Reconciling statements and building your model…';
-  statusText.classList.remove('err');
-  let combined = ready.map(f=>`\n=== FILE: ${f.name} ===\n${f.text.slice(0,9000)}`).join('\n');
-  combined = combined.slice(0, 32000);
+  const filename = usingFallback ? 'Peer_Benchmark_Board_Deck_FALLBACK.pptx' : 'Peer_Benchmark_Board_Deck.pptx';
+  let blob;
   try{
-    financials = await callClaude(combined);
-    financials._source = 'ai';
-    statusText.textContent = '';
-    enterDashboard();
+    blob = usingFallback ? await pptx.getBlob() : await pptx.write({outputType:'blob'});
   }catch(err){
-    try{
-      financials = heuristicExtract(ready, combined);
-      financials._source = 'heuristic';
-      statusText.textContent = '';
-      enterDashboard();
-    }catch(err2){
-      statusText.textContent = 'Could not read figures out of these files. Try a cleaner export, or use the sample company.';
-      statusText.classList.add('err');
-      analyzeBtn.disabled = false;
+    // Some pptxgenjs builds expect write('blob') instead of write({outputType:'blob'}) — try that shape too.
+    try{ blob = usingFallback ? await pptx.getBlob() : await pptx.write('blob'); }
+    catch(err2){
+      status.className='status err'; status.textContent = 'Could not build the file for download: ' + err2.message;
+      return;
     }
   }
+  downloadBlobRobustly(blob, filename);
+  status.className='status ok';
+  status.textContent = usingFallback
+    ? `✓ Downloaded ${filename} (built with the offline fallback engine — if PowerPoint has trouble opening it, reload the page for a stronger connection and export again).`
+    : `✓ Downloaded ${filename}`;
 }
 
-/* ============================= OFFLINE FALLBACK: PATTERN-MATCHED EXTRACTION ============================= */
-/* Used automatically whenever the live AI call can't be reached (e.g. this file is running outside a
-   connected Claude session). Reads line items directly out of the uploaded text using keyword matching —
-   no network call required. Works best on statements where each line item sits on its own row with its
-   numeric columns; PDFs that jumble columns together will extract less completely. */
-const METRIC_KEYWORDS = {
-  rev: ['revenue from operations','total revenue','net revenue','total income from operations','sales revenue','net sales'],
-  cogs: ['cost of revenue','cost of goods sold','cost of sales'],
-  gp: ['gross profit'],
-  opex: ['total expenses','total operating expenses','operating expenses'],
-  ebitda: ['ebitda'],
-  ni: ['profit for the period','profit for the year','net profit','profit after tax','net income'],
-  ta: ['total assets'],
-  tl: ['total liabilities'],
-  te: ['total equity'],
-  ca: ['total current assets'],
-  cl: ['total current liabilities'],
-  cash: ['cash and cash equivalents'],
-  inv: ['inventories','inventory'],
-  debt: ['total debt','total borrowings','borrowings'],
-  ocf: ['net cash generated by operating activities','net cash from operating activities','cash flow from operating activities','net cash provided by operating activities'],
-  icf: ['net cash used in investing activities','net cash from investing activities','net cash generated from investing activities'],
-  fcf: ['net cash used in financing activities','net cash from financing activities'],
-  financeCost: ['finance cost','interest expense'],
-  da: ['depreciation and amortization','depreciation & amortization']
-};
-
-function parseNumberToken(tok){
-  if(!tok) return null;
-  let neg = /^\(.*\)$/.test(tok.trim());
-  let n = tok.replace(/[₹$€£,() ]/g,'');
-  const v = parseFloat(n);
-  if(isNaN(v)) return null;
-  return neg ? -v : v;
-}
-
-function extractNumbersFromLine(line){
-  const matches = line.match(/\(?-?[\d][\d,]*\.?\d*\)?/g) || [];
-  return matches.map(parseNumberToken).filter(v=>v!==null);
-}
-
-function detectPeriodLabels(text){
-  const re = /(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}|FY\s?20\d{2}|20\d{2}-\d{2}/gi;
-  const found = [...new Set((text.match(re)||[]))];
-  if(found.length>=2) return [found[1], found[0]]; // [prior, current] — dates usually appear current-first in headers
-  return ['Prior period','Current period'];
-}
-
-function heuristicExtract(files, combined){
-  const lines = combined.split(/\n/);
-  const values = {}; // key -> [colA, colB]
-  Object.keys(METRIC_KEYWORDS).forEach(key=>{
-    for(const kw of METRIC_KEYWORDS[key]){
-      const hit = lines.find(l=> l.toLowerCase().includes(kw));
-      if(hit){
-        const nums = extractNumbersFromLine(hit);
-        if(nums.length>=2){ values[key] = [nums[nums.length-1], nums[nums.length-2]]; break; } // [prior, current]
-        if(nums.length===1){ values[key] = [null, nums[0]]; break; }
-      }
-    }
-  });
-
-  const anyFound = Object.keys(values).length>0;
-  if(!anyFound) throw new Error('No recognizable line items found');
-
-  const p = detectPeriodLabels(combined);
-  const g = k => values[k] || [null,null];
-  const rev=g('rev'), cogsA=g('cogs'), gpA=g('gp'), opexA=g('opex'), ebitdaA=g('ebitda'), niA=g('ni');
-  const ta=g('ta'), tl=g('tl'), te=g('te'), ca=g('ca'), cl=g('cl'), cash=g('cash'), inv=g('inv'), debt=g('debt');
-  const ocf=g('ocf'), icf=g('icf'), fcf=g('fcf'), fc=g('financeCost'), da=g('da');
-
-  const div = (a,b)=> (a==null||b==null||b===0) ? null : a/b;
-  const gm = [ (rev[0]&&gpA[0]!=null)?gpA[0]/rev[0]*100:null, (rev[1]&&gpA[1]!=null)?gpA[1]/rev[1]*100:null ];
-  const nm = [ div(niA[0],rev[0])!=null?div(niA[0],rev[0])*100:null, div(niA[1],rev[1])!=null?div(niA[1],rev[1])*100:null ];
-  const cr = [ div(ca[0],cl[0]), div(ca[1],cl[1]) ];
-  const qr = [ div(cash[0]!=null&&ca[0]!=null?ca[0]-(inv[0]||0):null, cl[0]), div(cash[1]!=null&&ca[1]!=null?ca[1]-(inv[1]||0):null, cl[1]) ];
-  const de = [ div(debt[0], te[0]), div(debt[1], te[1]) ];
-  const roe = [ div(niA[0], te[0])!=null?div(niA[0],te[0])*100:null, div(niA[1], te[1])!=null?div(niA[1],te[1])*100:null ];
-  const roa = [ div(niA[0], ta[0])!=null?div(niA[0],ta[0])*100:null, div(niA[1], ta[1])!=null?div(niA[1],ta[1])*100:null ];
-  const ebitdaCalc = [0,1].map(i => ebitdaA[i]!=null ? ebitdaA[i] : ( (niA[i]!=null && fc[i]!=null && da[i]!=null) ? niA[i]+fc[i]+da[i] : null ));
-  const ic = [0,1].map(i => div(ebitdaCalc[i], fc[i]));
-
-  function rv(label, arr){
-    if(arr[0]==null || arr[1]==null) return ['Base period — no prior comparison', 'Not enough data to compare — only one period was found for this line item.'];
-    const chg = arr[1]-arr[0];
-    const pct = arr[0]!==0 ? (chg/Math.abs(arr[0])*100) : null;
-    const dir = chg>0?'up':chg<0?'down':'flat';
-    return ['Base period — no prior comparison', `${label} moved ${dir}${pct!=null?' '+Math.abs(pct).toFixed(1)+'%':''} versus the prior period, based on the figures found in your files (no narrative cause available offline).`];
-  }
-
-  const coNameGuess = (files[0] && files[0].name.replace(/\.[^.]+$/,'').replace(/[-_]/g,' ')) || 'Uploaded company';
-
-  return {
-    co: coNameGuess,
-    cur: '',
-    p, pBS: p,
-    is: {rev, cogs:cogsA, gp:gpA, opex:opexA, ebitda:ebitdaCalc, ni:niA},
-    bs: {ca, cl, ta, tl, te, cash, inv, debt},
-    cf: {ocf, icf, fcf, fcfree: ocf},
-    r: {gm, nm, cr, qr, de, roe, roa, ic},
-    v: {
-      rev: rv('Revenue', rev), ni: rv('Net income', niA), gm: rv('Gross margin', gm),
-      cr: rv('Current ratio', cr), de: rv('Debt/equity', de), roe: rv('ROE', roe), ocf: rv('Operating cash flow', ocf)
-    },
-    flags: [
-      (cr[1]!=null && cr[1] < 1) ? `Current ratio is below 1.0 (${cr[1].toFixed(2)}) in the latest period — short-term liquidity is worth reviewing.` : null,
-      (de[1]!=null && de[1] > 2) ? `Debt/equity is elevated (${de[1].toFixed(2)}) in the latest period.` : null,
-      (ta[1]!=null && (tl[1]!=null && te[1]!=null) && Math.abs(ta[1]-(tl[1]+te[1])) > Math.max(1, ta[1]*0.01)) ? 'Total assets does not tie to liabilities + equity within 1% — check for a data extraction gap or a genuine misstatement.' : null,
-      Object.keys(values).length < 8 ? 'Several standard line items were not found automatically — figures below may be incomplete. Check the on-page numbers against your source document.' : null
-    ].filter(Boolean),
-    sum: {
-      mgmt: 'This view was built with offline pattern matching (no AI narrative available). Figures are pulled directly from your files — verify anything that looks off against the source statement.',
-      bank: 'Liquidity and leverage ratios below are computed directly from extracted balance sheet figures.',
-      inv: 'Return and growth figures are computed directly from extracted figures; no qualitative narrative is available offline.',
-      aud: 'Flags below are simple automated checks (balance tie-out, liquidity, leverage) rather than a professional review — treat them as a starting point only.'
-    }
-  };
-}
-
-/* ============================= DASHBOARD RENDER ============================= */
-function shortCompanyName(full){
-  let s = full.split(/[—–-]/)[0].trim();
-  s = s.replace(/\s*\((in\s*[^)]*)\)\s*/gi, '').trim();
-  s = s.replace(/\b(Limited|Ltd\.?|Incorporated|Inc\.?|Corporation|Corp\.?|PLC|LLC|Co\.?|Company|Standalone|Consolidated)\b\.?/gi, '').trim();
-  s = s.replace(/\s{2,}/g, ' ').trim();
-  if(!s) s = full.split(/[—–-]/)[0].trim();
-  return s;
-}
-
-function enterDashboard(){
-  document.getElementById('stage').style.display = 'none';
-  document.getElementById('shell').classList.add('active');
-  const now = new Date();
-  document.getElementById('tsBox').innerHTML = `Analysis current as of<br><b>${now.toLocaleString()}</b>`;
-  const coFull = financials.co || 'Uploaded company';
-  const coShort = shortCompanyName(coFull);
-  document.title = coShort + ' — Financial Intelligence';
-  const appTitleMeta = document.getElementById('appTitleMeta');
-  if(appTitleMeta) appTitleMeta.setAttribute('content', coShort);
-  document.getElementById('brandName').textContent = coShort;
-  document.getElementById('brandSub').textContent = 'Statement Intelligence & Variance Reasoning';
-  document.getElementById('brandMark').textContent = coShort.charAt(0).toUpperCase();
-  document.getElementById('coName').textContent = financials.co || 'Uploaded company';
-  if(financials.pBS){
-    document.getElementById('coPeriods').textContent = `P&L/cash flow: ${(financials.p||[]).join(' → ')}  ·  Balance sheet: ${(financials.pBS||[]).join(' → ')}`;
-  } else {
-    document.getElementById('coPeriods').textContent = (financials.p||[]).join('  ·  ');
-  }
-  const badge = document.getElementById('sourceBadge');
-  if(financials._source === 'heuristic'){
-    badge.innerHTML = '⚠ Built with offline pattern matching (no live AI call available here) — verify figures against your source document.';
-    badge.style.color = '#E28066';
-  } else if(financials._source === 'ai'){
-    badge.textContent = '✓ Reconciled with AI-assisted analysis';
-    badge.style.color = '#7CC9A3';
-  } else {
-    badge.textContent = '';
-  }
-  renderSummaries();
-  renderMgmt();
-  renderBank();
-  renderInv();
-  renderAud();
-}
-
-function renderSummaries(){
-  const s = financials.sum || {};
-  document.getElementById('sum-mgmt').textContent = s.mgmt || '—';
-  document.getElementById('sum-bank').textContent = s.bank || '—';
-  document.getElementById('sum-inv').textContent = s.inv || '—';
-  document.getElementById('sum-aud').textContent = s.aud || '—';
-}
-
-function fmt(n, cur){
-  if(n===null||n===undefined||isNaN(n)) return '—';
-  if(cur==='₹cr'){
-    return '₹' + n.toLocaleString('en-IN', {maximumFractionDigits:0}) + ' cr';
-  }
-  const abs = Math.abs(n);
-  let val;
-  if(abs>=1e9) val=(n/1e9).toFixed(2)+'B';
-  else if(abs>=1e6) val=(n/1e6).toFixed(2)+'M';
-  else if(abs>=1e3) val=(n/1e3).toFixed(1)+'K';
-  else val = n.toFixed(1);
-  return (cur||'') + ' ' + val;
-}
-function pct(n){ return (n===null||n===undefined||isNaN(n)) ? '—' : n.toFixed(1)+'%'; }
-function last(arr){ return arr && arr.length ? arr[arr.length-1] : null; }
-function prev(arr){ return arr && arr.length>1 ? arr[arr.length-2] : null; }
-function deltaClass(cur,pr){ if(cur==null||pr==null) return 'flat'; return cur>pr?'up':cur<pr?'down':'flat'; }
-function deltaTxt(cur,pr,isPct){
-  if(cur==null||pr==null) return 'no prior period';
-  const d = cur-pr; const arrow = d>0?'▲':d<0?'▼':'▬';
-  if(isPct) return `${arrow} ${Math.abs(d).toFixed(1)} pts vs prior`;
-  const pctd = pr!==0 ? (d/Math.abs(pr)*100) : 0;
-  return `${arrow} ${Math.abs(pctd).toFixed(1)}% vs prior`;
-}
-
-function kpiCard(label, valStr, cur, pr, isPct){
-  return `<div class="kpi"><div class="k-label">${label}</div><div class="k-val">${valStr}</div>
-  <div class="k-delta ${deltaClass(cur,pr)}">${deltaTxt(cur,pr,isPct)}</div></div>`;
-}
-
-function destroy(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
-
-function baseOptions(onClick){
-  return {
-    responsive:true, maintainAspectRatio:false,
-    interaction:{ mode:'index', intersect:false },
-    onHover:(evt, elements, chart)=>{ chart.canvas.style.cursor = elements.length ? 'pointer' : 'default'; },
-    plugins:{ legend:{labels:{color:'#ECE7D8', font:{family:'IBM Plex Sans', size:11}}}, tooltip:{titleFont:{family:'IBM Plex Sans'}, bodyFont:{family:'IBM Plex Mono'}} },
-    scales:{
-      x:{ ticks:{color:'#8992A6', font:{family:'IBM Plex Mono', size:11}}, grid:{color:'rgba(237,234,225,0.06)'} },
-      y:{ ticks:{color:'#8992A6', font:{family:'IBM Plex Mono', size:11}}, grid:{color:'rgba(237,234,225,0.08)'} }
-    },
-    onClick: onClick
-  };
-}
-
-function openNote(title, body, label, accent, numsHtml){
-  document.getElementById('noteLabel').textContent = label || 'Variance note';
-  document.getElementById('noteTitle').textContent = title;
-  document.getElementById('noteBody').textContent = body;
-  document.getElementById('noteNums').innerHTML = numsHtml || '';
-  document.getElementById('note').style.borderTop = `4px solid ${accent||'#9A3E22'}`;
-  document.getElementById('note').classList.add('show');
-  document.getElementById('noteOverlay').classList.add('show');
-}
-document.getElementById('noteClose').addEventListener('click', closeNote);
-document.getElementById('noteOverlay').addEventListener('click', closeNote);
-function closeNote(){ document.getElementById('note').classList.remove('show'); document.getElementById('noteOverlay').classList.remove('show'); }
-
-function clickHandler(metricKey, metricLabel, dataArrays, accent, periodsArr){
-  return (evt, elements, chart)=>{
-    if(!elements.length) return;
-    const idx = elements[0].index;
-    const period = (periodsArr || financials.p)[idx];
-    const vArr = (financials.v && financials.v[metricKey]) || [];
-    const reason = vArr[idx] || 'No variance note supplied for this period.';
-    let numsHtml = Object.keys(dataArrays).map(k=>{
-      const v = dataArrays[k][idx];
-      return `${k}: ${typeof v==='number' ? v.toLocaleString(undefined,{maximumFractionDigits:2}) : '—'}`;
-    }).join('<br>');
-    openNote(`${metricLabel} — ${period}`, reason, 'Why it moved', accent, numsHtml);
-  };
-}
-
-/* ---- MANAGEMENT ---- */
-function renderMgmt(){
-  const f = financials, cur=f.cur||'';
-  const rev=f.is.rev||[], opex=f.is.opex||[], ebitda=f.is.ebitda||[], gm=f.r.gm||[], nm=f.r.nm||[], cogs=f.is.cogs||[];
-  document.getElementById('kpi-mgmt').innerHTML =
-    kpiCard('Revenue', fmt(last(rev),cur), last(rev), prev(rev)) +
-    kpiCard('EBITDA', fmt(last(ebitda),cur), last(ebitda), prev(ebitda)) +
-    kpiCard('Gross margin', pct(last(gm)), last(gm), prev(gm), true) +
-    kpiCard('Net margin', pct(last(nm)), last(nm), prev(nm), true);
-
-  const totExp = rev.map((_,i)=>(cogs[i]||0)+(opex[i]||0));
-  destroy('c-mgmt-1');
-  charts['c-mgmt-1'] = new Chart(document.getElementById('c-mgmt-1'), {
-    type:'bar',
-    data:{ labels:f.p, datasets:[
-      {label:'Revenue', data:rev, backgroundColor:'#1F6F54'},
-      {label:'Total expense', data:totExp, backgroundColor:'#C9A227'}
-    ]},
-    options: baseOptions(clickHandler('rev','Revenue', {revenue:rev, total_expense:totExp}, '#1F6F54'))
-  });
-
-  destroy('c-mgmt-2');
-  charts['c-mgmt-2'] = new Chart(document.getElementById('c-mgmt-2'), {
-    type:'line',
-    data:{ labels:f.p, datasets:[
-      {label:'Gross margin %', data:gm, borderColor:'#1F6F54', backgroundColor:'#1F6F54', tension:.3},
-      {label:'Net margin %', data:nm, borderColor:'#C9A227', backgroundColor:'#C9A227', tension:.3}
-    ]},
-    options: baseOptions(clickHandler('gm','Gross margin', {gross_margin:gm, net_margin:nm}, '#1F6F54'))
-  });
-
-  destroy('c-mgmt-3');
-  charts['c-mgmt-3'] = new Chart(document.getElementById('c-mgmt-3'), {
-    type:'line',
-    data:{ labels:f.p, datasets:[{label:'EBITDA', data:ebitda, borderColor:'#EDEAE1', backgroundColor:'rgba(237,234,225,0.15)', fill:true, tension:.3}]},
-    options: baseOptions(clickHandler('ebitda','EBITDA', {ebitda:ebitda}, '#EDEAE1'))
-  });
-
-  destroy('c-mgmt-4');
-  charts['c-mgmt-4'] = new Chart(document.getElementById('c-mgmt-4'), {
-    type:'doughnut',
-    data:{ labels:['COGS','Operating expense'], datasets:[{data:[last(cogs)||0,last(opex)||0], backgroundColor:['#9A3E22','#2C4A66']}]},
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{labels:{color:'#ECE7D8'}}} }
-  });
-}
-
-/* ---- BANKERS ---- */
-function renderBank(){
-  const f = financials, cur=f.cur||'';
-  const bsP = f.pBS || f.p;
-  const crr=f.r.cr||[], qr=f.r.qr||[], de=f.r.de||[], ic=f.r.ic||[], ocf=f.cf.ocf||[], icf=f.cf.icf||[], fcf=f.cf.fcf||[];
-  document.getElementById('kpi-bank').innerHTML =
-    kpiCard('Current ratio', (last(crr)!=null?last(crr).toFixed(2):'—'), last(crr), prev(crr)) +
-    kpiCard('Quick ratio', (last(qr)!=null?last(qr).toFixed(2):'—'), last(qr), prev(qr)) +
-    kpiCard('Debt / equity', (last(de)!=null?last(de).toFixed(2):'—'), last(de), prev(de)) +
-    kpiCard('Interest coverage', (last(ic)!=null?last(ic).toFixed(1)+'×':'—'), last(ic), prev(ic));
-
-  destroy('c-bank-1');
-  charts['c-bank-1'] = new Chart(document.getElementById('c-bank-1'), {
-    type:'line',
-    data:{ labels:bsP, datasets:[
-      {label:'Current ratio', data:crr, borderColor:'#2C4A66', backgroundColor:'#2C4A66', tension:.3},
-      {label:'Quick ratio', data:qr, borderColor:'#C9A227', backgroundColor:'#C9A227', tension:.3}
-    ]},
-    options: baseOptions(clickHandler('cr','Current ratio', {current_ratio:crr, quick_ratio:qr}, '#2C4A66', bsP))
-  });
-
-  destroy('c-bank-2');
-  charts['c-bank-2'] = new Chart(document.getElementById('c-bank-2'), {
-    type:'bar',
-    data:{ labels:bsP, datasets:[{label:'Debt / equity', data:de, backgroundColor:'#2C4A66'}]},
-    options: baseOptions(clickHandler('de','Debt / equity', {debt_to_equity:de}, '#2C4A66', bsP))
-  });
-
-  destroy('c-bank-3');
-  charts['c-bank-3'] = new Chart(document.getElementById('c-bank-3'), {
-    type:'bar',
-    data:{ labels:f.p, datasets:[
-      {label:'Operating', data:ocf, backgroundColor:'#1F6F54', stack:'s'},
-      {label:'Investing', data:icf, backgroundColor:'#9A3E22', stack:'s'},
-      {label:'Financing', data:fcf, backgroundColor:'#C9A227', stack:'s'}
-    ]},
-    options: Object.assign(baseOptions(clickHandler('ocf','Operating cash flow', {operating:ocf, investing:icf, financing:fcf}, '#1F6F54')), {scales:{x:{stacked:true, ticks:{color:'#8992A6'}, grid:{display:false}}, y:{stacked:true, ticks:{color:'#8992A6'}, grid:{color:'rgba(237,234,225,0.08)'}}}})
-  });
-
-  destroy('c-bank-4');
-  charts['c-bank-4'] = new Chart(document.getElementById('c-bank-4'), {
-    type:'line',
-    data:{ labels:f.p, datasets:[{label:'Interest coverage ×', data:ic, borderColor:'#EDEAE1', backgroundColor:'rgba(237,234,225,0.15)', fill:true, tension:.3}]},
-    options: baseOptions(clickHandler('ic','Interest coverage', {interest_coverage:ic}, '#EDEAE1'))
-  });
-}
-
-/* ---- INVESTORS ---- */
-function renderInv(){
-  const f = financials, cur=f.cur||'';
-  const ni=f.is.ni||[], roe=f.r.roe||[], roa=f.r.roa||[], rev=f.is.rev||[], fcfree=f.cf.fcfree||[];
-  const growth = rev.map((v,i)=> i===0||rev[i-1]==null||rev[i-1]===0 ? null : ((v-rev[i-1])/Math.abs(rev[i-1])*100));
-  const epsArr = f.eps || null;
-  document.getElementById('kpi-inv').innerHTML =
-    kpiCard('Net income', fmt(last(ni),cur), last(ni), prev(ni)) +
-    (epsArr ? kpiCard('EPS (basic)', (cur==='₹cr'?'₹':cur+' ')+last(epsArr).toFixed(2), last(epsArr), prev(epsArr)) : '') +
-    kpiCard('ROE', pct(last(roe)), last(roe), prev(roe), true) +
-    kpiCard('ROA', pct(last(roa)), last(roa), prev(roa), true) +
-    kpiCard('Revenue growth', pct(last(growth)), last(growth), prev(growth), true);
-
-  destroy('c-inv-1');
-  charts['c-inv-1'] = new Chart(document.getElementById('c-inv-1'), {
-    type:'bar',
-    data:{ labels:f.p, datasets:[{label:'Net income', data:ni, backgroundColor:'#C9A227'}]},
-    options: baseOptions(clickHandler('ni','Net income', {net_income:ni}, '#C9A227'))
-  });
-
-  destroy('c-inv-2');
-  charts['c-inv-2'] = new Chart(document.getElementById('c-inv-2'), {
-    type:'line',
-    data:{ labels:f.p, datasets:[
-      {label:'ROE %', data:roe, borderColor:'#C9A227', backgroundColor:'#C9A227', tension:.3},
-      {label:'ROA %', data:roa, borderColor:'#2C4A66', backgroundColor:'#2C4A66', tension:.3}
-    ]},
-    options: baseOptions(clickHandler('roe','Return on equity', {roe:roe, roa:roa}, '#C9A227'))
-  });
-
-  destroy('c-inv-3');
-  charts['c-inv-3'] = new Chart(document.getElementById('c-inv-3'), {
-    type:'bar',
-    data:{ labels:f.p, datasets:[{label:'Revenue growth %', data:growth, backgroundColor:'#1F6F54'}]},
-    options: baseOptions(clickHandler('rev','Revenue growth', {growth_pct:growth}, '#1F6F54'))
-  });
-
-  destroy('c-inv-4');
-  charts['c-inv-4'] = new Chart(document.getElementById('c-inv-4'), {
-    type:'line',
-    data:{ labels:f.p, datasets:[{label:'Free cash flow', data:fcfree, borderColor:'#EDEAE1', backgroundColor:'rgba(237,234,225,0.15)', fill:true, tension:.3}]},
-    options: baseOptions(clickHandler('ocf','Free cash flow', {free_cash_flow:fcfree}, '#EDEAE1'))
-  });
-}
-
-/* ---- AUDITORS ---- */
-function renderAud(){
-  const f = financials, cur=f.cur||'';
-  const bsP = f.pBS || f.p;
-  const ta=f.bs.ta||[], tl=f.bs.tl||[], te=f.bs.te||[], gm=f.r.gm||[];
-  const gmSwing = gm.map((v,i)=> i===0||gm[i-1]==null||v==null ? null : (v-gm[i-1]));
-  const lPlusE = ta.map((_,i)=> (tl[i]||0)+(te[i]||0));
-  const imbalance = ta.map((v,i)=> v!=null && lPlusE[i]!=null ? Math.abs(v-lPlusE[i]) : null);
-
-  document.getElementById('kpi-aud').innerHTML =
-    kpiCard('Total assets', fmt(last(ta),cur), last(ta), prev(ta)) +
-    kpiCard('Total equity', fmt(last(te),cur), last(te), prev(te)) +
-    kpiCard('Balance check (latest)', fmt(last(imbalance),cur), 0,0,true) +
-    kpiCard('Gross margin swing', (last(gmSwing)!=null? (last(gmSwing)>=0?'+':'')+last(gmSwing).toFixed(1)+' pts':'—'), 0,0,true);
-
-  destroy('c-aud-1');
-  charts['c-aud-1'] = new Chart(document.getElementById('c-aud-1'), {
-    type:'bar',
-    data:{ labels:bsP, datasets:[
-      {label:'Total assets', data:ta, backgroundColor:'#9A3E22'},
-      {label:'Liabilities + equity', data:lPlusE, backgroundColor:'#2C4A66'}
-    ]},
-    options: baseOptions(clickHandler('ni','Balance check', {total_assets:ta, liabilities_plus_equity:lPlusE}, '#9A3E22', bsP))
-  });
-
-  destroy('c-aud-2');
-  charts['c-aud-2'] = new Chart(document.getElementById('c-aud-2'), {
-    type:'bar',
-    data:{ labels:f.p, datasets:[{label:'Gross margin swing, pts', data:gmSwing, backgroundColor:'#C9A227'}]},
-    options: baseOptions(clickHandler('gm','Margin swing', {gm_swing_pts:gmSwing}, '#C9A227'))
-  });
-
-  const flagsEl = document.getElementById('flagList');
-  flagsEl.innerHTML = (f.flags||[]).map(x=>`<li>${x}</li>`).join('') || '<li>No flags returned for this dataset.</li>';
-}
-
-/* ============================= TAB SWITCHING ============================= */
-function showPersona(key){
-  document.querySelectorAll('.ptab').forEach(t=>t.classList.toggle('active', t.dataset.p===key));
-  document.querySelectorAll('.persona-panel').forEach(p=>p.classList.toggle('active', p.id==='panel-'+key));
-}
-document.querySelectorAll('.ptab').forEach(tab=>{
-  tab.addEventListener('click', ()=> showPersona(tab.dataset.p));
+// ---------- Wiring ----------
+document.getElementById('buildBtn').addEventListener('click', ()=>{
+  const status = document.getElementById('statusLine');
+  document.getElementById('dashboard').classList.remove('hidden');
+  document.getElementById('aiBtn').disabled = false;
+  STATE.aiInsights=null; STATE.aiSummary=null; // clears only the live layer — baked insights are untouched
+  renderLeaderboard(); renderCharts(); renderSummary(); renderAiLog();
+  document.getElementById('exportBtn').classList.toggle('hidden', !effectiveInsights() && !effectiveSummary());
+  document.getElementById('exportPdfBtn').classList.toggle('hidden', !effectiveInsights() && !effectiveSummary());
+  status.className='status ok';
+  status.textContent = `✓ Dashboard built for ${STATE.banks.length} bank(s).`;
+});
+document.getElementById('aiBtn').addEventListener('click', generateInsights);
+document.getElementById('exportBtn').addEventListener('click', exportDeck);
+document.getElementById('exportPdfBtn').addEventListener('click', exportDeckPDF);
+document.getElementById('periodToggle').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  document.querySelectorAll('#periodToggle button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active'); STATE.mode = btn.dataset.mode;
+  if(!document.getElementById('dashboard').classList.contains('hidden')){ renderLeaderboard(); renderCharts(); }
 });
 
-/* ============================= DEMO DATA ============================= */
-function demoData(){
-  return {
-    co: "Meridian Industrial Corp. (sample data)",
-    cur: "USD",
-    p: ["FY22","FY23","FY24","FY25"],
-    is: {
-      rev:[184000000,201500000,219800000,238600000],
-      cogs:[121400000,134800000,148200000,159200000],
-      gp:[62600000,66700000,71600000,79400000],
-      opex:[38200000,41900000,47500000,49800000],
-      ebitda:[27800000,28300000,28700000,34600000],
-      ni:[14100000,13200000,11800000,18900000]
-    },
-    bs: {
-      ca:[58200000,61400000,64100000,72300000],
-      cl:[41300000,44800000,52600000,49200000],
-      ta:[212400000,224100000,238900000,256700000],
-      tl:[121800000,131200000,148900000,143500000],
-      te:[90600000,92900000,90000000,113200000],
-      cash:[22100000,19800000,15600000,26400000],
-      inv:[24300000,26900000,29800000,28100000],
-      debt:[86500000,93400000,109700000,98100000]
-    },
-    cf: {
-      ocf:[22600000,20100000,16800000,27900000],
-      icf:[-14200000,-15800000,-19400000,-13100000],
-      fcf:[-6100000,2900000,4700000,-8800000],
-      fcfree:[15400000,11600000,6200000,19700000]
-    },
-    r: {
-      gm:[34.0,33.1,32.6,33.3],
-      nm:[7.7,6.6,5.4,7.9],
-      cr:[1.41,1.37,1.22,1.47],
-      qr:[0.82,0.77,0.65,0.90],
-      de:[0.95,1.01,1.22,0.87],
-      roe:[15.6,14.2,13.1,16.7],
-      roa:[6.6,5.9,4.9,7.4],
-      ic:[6.1,5.4,4.2,7.0]
-    },
-    v: {
-      rev:["Base period — no prior comparison","New distribution contract added ~9.5% volume","Price increases offset softer unit demand","Recovered unit demand plus 2 new regional accounts"],
-      ni:["Base period — no prior comparison","Input cost inflation outpaced price increases","One-time facility consolidation charge of $4.1M","Charge did not repeat; operating leverage kicked in"],
-      gm:["Base period — no prior comparison","Likely: raw material costs rose faster than pricing","Freight and energy costs pressured margin further","Procurement contract renegotiation restored margin"],
-      cr:["Base period — no prior comparison","Inventory build ahead of anticipated demand","Short-term debt drawn for facility consolidation","Debt paydown and cash build post one-time charge"],
-      de:["Base period — no prior comparison","Drew revolver to fund working capital growth","Additional term loan for facility consolidation project","Free cash flow used to pay down term debt"],
-      roe:["Base period — no prior comparison","Net income growth lagged equity base growth","One-time charge compressed returns for the year","Charge rolled off; margin recovery lifted returns"],
-      ocf:["Base period — no prior comparison","Working capital build consumed part of earnings","Elevated inventory and receivables reduced conversion","Working capital normalized, conversion improved sharply"]
-    },
-    flags: [
-      "FY24 net income fell while revenue rose — confirm the $4.1M consolidation charge is properly disclosed and non-recurring.",
-      "Quick ratio dipped to 0.65 in FY24 — verify no breach of any lender covenant thresholds.",
-      "Inventory grew faster than COGS in FY23–24 — test for obsolescence or overstatement risk.",
-      "Debt/equity peaked at 1.22 in FY24 then improved sharply — confirm classification of the term loan paydown in financing activities.",
-      "FY25 FCF is negative despite higher OCF — reconcile the capex assumption used to derive free cash flow."
-    ],
-    sum: {
-      mgmt:"Revenue has grown every year, but FY24 margin pressure and a one-off consolidation charge masked underlying progress. FY25's rebound suggests the cost actions are paying off — worth protecting that momentum going into next year.",
-      bank:"Coverage and leverage weakened through FY24 on the facility consolidation, but both reversed sharply in FY25 with debt paydown and improved conversion — the credit story is trending the right direction.",
-      inv:"Returns dipped in FY24 on a non-recurring charge rather than a structural issue, and FY25 shows the business converting growth into profit again — the key question is durability of the margin recovery.",
-      aud:"Most movements trace to a disclosed one-time charge and working-capital timing, but the inventory build, quick-ratio dip and capex assumption behind free cash flow all warrant substantive testing this cycle."
-    }
-  };
-}
-
-/* ============================= REAL FILING: INFOSYS LIMITED, STANDALONE, Q1 FY27 ============================= */
-/* Extracted directly from the uploaded interim condensed standalone financial statements (three months ended
-   June 30, 2026) and the accompanying auditor's report. P&L and cash flow compare Q1 FY27 to Q1 FY26 (same
-   quarter, prior year) as reported. The balance sheet compares June 30, 2026 to March 31, 2026 (last fiscal
-   year end), which is the only balance-sheet comparative this interim filing provides. */
-function infosysData(){
-  return {
-    co: "Infosys Limited — Standalone (Ind AS), all figures ₹ crore",
-    cur: "₹cr",
-    p: ["Q1 FY26 (3M to Jun'25)", "Q1 FY27 (3M to Jun'26)"],
-    pBS: ["FYE Mar 31, 2026", "Q1 FY27 end, Jun 30, 2026"],
-    eps: [14.72, 17.87],
-    is: {
-      rev:[35275, 39957],
-      cogs:[25098, 27777],
-      gp:[10177, 12180],
-      opex:[2399, 2893],
-      ebitda:[9328, 10835],
-      ni:[6114, 7249]
-    },
-    bs: {
-      ca:[80431, 78507],
-      cl:[39637, 39916],
-      ta:[126691, 124470],
-      tl:[45817, 45811],
-      te:[80874, 78659],
-      cash:[8727, 12395],
-      inv:[0, 0],
-      debt:[3749, 3667]
-    },
-    cf: {
-      ocf:[5930, 8755],
-      icf:[5735, 5348],
-      fcf:[-9340, -10437],
-      fcfree:[5222, 8166]
-    },
-    r: {
-      gm:[28.85, 30.49],
-      nm:[17.33, 18.14],
-      cr:[2.03, 1.97],
-      qr:[1.29, 1.20],
-      de:[0.046, 0.047],
-      roe:[null, 9.22],
-      roa:[null, 5.82],
-      ic:[169.6, 177.6]
-    },
-    v: {
-      rev:["Base period — no prior comparison", "Volume growth plus large-deal ramp-ups; management cites broad-based demand across service lines"],
-      ni:["Base period — no prior comparison", "Revenue growth outpaced cost growth despite wage increases, lifting profit ~18.6% YoY"],
-      gm:["Base period — no prior comparison", "Likely: better cost absorption as revenue scaled faster than delivery costs (people, subcontractors, software)"],
-      cr:["Base period — no prior comparison", "Large dividend payout and investment redemptions used for financing outflows trimmed current assets faster than current liabilities"],
-      de:["Base period — no prior comparison", "Essentially unchanged — the company reports carrying no borrowings; only lease liabilities move this ratio"],
-      roe:["Not available — prior-year balance sheet not included in this filing", "Quarterly (not annualized) return; strong profit growth against a fairly stable equity base"],
-      ocf:["Base period — no prior comparison", "Working capital release — trade receivables and unbilled revenue fell while payables held steady, boosting cash conversion"]
-    },
-    flags: [
-      "Auditor's report (Deloitte Haskins & Sells LLP, July 23, 2026) is unmodified — no qualifications, emphasis-of-matter, or going-concern doubt noted.",
-      "A U.S. DOJ investigation into H-1B visa classification for one client's staff is disclosed as an ongoing legal matter with no provision booked — outcome and timing are not yet determinable.",
-      "Income-tax contingent liabilities (claims not acknowledged as debt) rose slightly to ₹1,966 crore from ₹1,944 crore — a recurring item, not a new exposure.",
-      "₹10,143 crore final FY26 dividend was paid this quarter, driving the large net financing outflow — confirm this reconciles to the board/AGM approval dates disclosed in the equity note.",
-      "Two subsidiary acquisitions closed intra-quarter (Stratus Global LLC; Optimum Achieve Holdings) via Infosys Nova Holdings LLC — confirm purchase-price allocation and goodwill will flow through consolidated (not standalone) statements.",
-      "Balance sheet ties out exactly (assets = liabilities + equity) at both dates — no unreconciled variance found."
-    ],
-    sum: {
-      mgmt:"Revenue grew 13.3% year-on-year and delivery margin improved to roughly 30.5%, so growth is translating into profit rather than being absorbed by cost. The main watch item is whether this pace of demand holds up through the rest of the fiscal year.",
-      bank:"This is a fundamentally unlevered balance sheet — the company states it carries no debt, and interest coverage sits well above 150x. The only notable financing item is a large annual dividend outflow, not credit stress.",
-      inv:"EPS rose from ₹14.72 to ₹17.87 (+21.4%) on strong operating leverage. Free cash flow before the dividend was healthy; the dividend itself reflects a deliberate capital-return policy rather than a cash constraint.",
-      aud:"The quarter closes clean: the auditor's opinion is unmodified and the balance sheet reconciles exactly. The two items worth tracking into next quarter are the undetermined DOJ inquiry and purchase accounting for the two mid-quarter acquisitions."
-    }
-  };
-}
 </script>
 </body>
 </html>
